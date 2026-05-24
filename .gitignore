@@ -6,5 +6,4 @@ server/dist/
 *.log
 .DS_Store
 .vercel
-
-.vercel
+.workbuddy/
