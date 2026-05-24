@@ -3,11 +3,9 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "nodeVersion": "18.x",
   "functions": {
     "api/**/*.ts": {
-      "runtime": "@vercel/node@3.0.7",
-      "nodeVersion": "18.x"
+      "runtime": "@vercel/node@3.0.7"
     }
   },
   "rewrites": [
