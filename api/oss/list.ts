@@ -28,7 +28,7 @@ export default async function handler(req: any, res: any) {
     if (!prefix) return res.status(400).json({ error: 'missing prefix' })
 
     const client = getOSSClient()
-    const result = await client.list({ prefix, 'max-keys': 1000 })
+    const result = await client.list({ prefix, 'max-keys': 1000 }, {})
     const keys = (result.objects || []).map((obj: any) => obj.name)
     res.status(200).json({ keys })
   } catch (err: any) {
