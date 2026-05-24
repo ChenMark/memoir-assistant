@@ -12,18 +12,21 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "ali-oss": "^6.21.0",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^17.4.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.20.0",
-    "ali-oss": "^6.21.0",
-    "crypto-js": "^4.2.0"
+    "react-router-dom": "^6.20.0"
   },
   "devDependencies": {
+    "@types/crypto-js": "^4.2.2",
+    "@types/dotenv": "^6.1.1",
+    "@types/node": "^25.9.1",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^4.2.1",
     "typescript": "^5.3.3",
-    "vite": "^5.0.12",
-    "@types/crypto-js": "^4.2.2"
+    "vite": "^5.0.12"
   }
 }
