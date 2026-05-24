@@ -1,8 +1,8 @@
-import { OSS } from 'ali-oss'
-import { config } from 'dotenv'
+import OSS from 'ali-oss'
+import dotenv from 'dotenv'
 
 // 加载环境变量（Vercel 会在部署时自动注入）
-config()
+dotenv.config()
 
 function getOSSClient() {
   const { OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET, OSS_BUCKET, OSS_REGION } = process.env
