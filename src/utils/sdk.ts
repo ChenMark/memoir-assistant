@@ -46,19 +46,10 @@ interface SDKConfig {
 
 // ============ OSS 云存储服务 ============
 export class OSSStorageService {
-  private config: SDKConfig
-  private backendUrl: string
+  constructor(config?: any) {}
 
-  constructor(config: SDKConfig) {
-    this.config = config
-    this.backendUrl = config.backendUrl || ''
-  }
-
-  /**
-   * 获取 presigned PUT URL（通过后端签名，避免前端暴露密钥）
-   */
   async getUploadUrl(key: string, contentType: string = 'application/octet-stream'): Promise<string> {
-    const url = `${this.backendUrl}/oss/sign`
+    const url = '/api/oss/sign'
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -101,7 +92,7 @@ export class OSSStorageService {
    * 获取 presigned GET URL（通过后端签名）
    */
   async getDownloadUrl(key: string): Promise<string> {
-    const url = `${this.backendUrl}/oss/download`
+    const url = '/api/oss/download'
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -126,7 +117,7 @@ export class OSSStorageService {
    * 删除对象（通过后端）
    */
   async deleteObject(key: string): Promise<void> {
-    const url = `${this.backendUrl}/oss/delete`
+    const url = '/api/oss/delete'
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -139,7 +130,7 @@ export class OSSStorageService {
    * 列出指定前缀的对象（通过后端）
    */
   async listObjects(prefix: string): Promise<string[]> {
-    const url = `${this.backendUrl}/oss/list`
+    const url = '/api/oss/list'
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -277,7 +268,7 @@ export class TelecomAuthService {
    * 用授权码换 token（通过后端代理，避免前端暴露 secret）
    */
   async exchangeToken(code: string): Promise<any> {
-    const url = `${this.config.backendUrl}/telecom/token`
+    const url = '/api/telecom/token'
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

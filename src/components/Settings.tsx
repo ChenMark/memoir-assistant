@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 import { MemoirSDK } from '../utils/sdk'
 
+function getSDK(): MemoirSDK {
+  return (window as any)._memoirSDK as MemoirSDK
+}
+
 interface StorageInfo {
   drafts: number
   photos: number
@@ -8,12 +12,7 @@ interface StorageInfo {
   bytes: number
 }
 
-function getSDK(): MemoirSDK {
-  return (window as any)._memoirSDK as MemoirSDK
-}
-
 export default function Settings() {
-  const [cloudUrl, setCloudUrl] = useState('')
   const [signMode, setSignMode] = useState('hmac')
   const [encKey, setEncKey] = useState('')
   const [saving, setSaving] = useState(false)
@@ -22,12 +21,9 @@ export default function Settings() {
   const [clearing, setClearing] = useState(false)
 
   useEffect(() => {
-    // 从 localStorage 读取配置
-    setCloudUrl(localStorage.getItem('memoir_cfg_backend') || '')
     setSignMode(localStorage.getItem('memoir_cfg_signmode') || 'hmac')
     setEncKey(localStorage.getItem('memoir_cfg_enckey') || '')
 
-    // 计算本地存储占用
     const drafts = JSON.parse(localStorage.getItem('memoir_drafts') || '[]')
     const photos = JSON.parse(localStorage.getItem('memoir_photos') || '[]')
     const friends = JSON.parse(localStorage.getItem('memoir_friends') || '[]')
@@ -37,12 +33,9 @@ export default function Settings() {
 
   const handleSave = () => {
     setSaving(true)
-    localStorage.setItem('memoir_cfg_backend', cloudUrl.trim())
     localStorage.setItem('memoir_cfg_signmode', signMode)
     localStorage.setItem('memoir_cfg_enckey', encKey)
-    // 更新 SDK 配置
     const sdk = getSDK()
-    if (sdk.storage) (sdk.storage as any).backendUrl = cloudUrl.trim() || 'http://localhost:3001'
     if (sdk.security) (sdk.security as any).config = { ...(sdk as any).config, signMode, encryptionKey: encKey }
     setTimeout(() => { setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000) }, 300)
   }
@@ -105,21 +98,10 @@ export default function Settings() {
       <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 24 }}>⚙️ 设置</h2>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {/* 云端配置 */}
+        {/* 安全配置 */}
         <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: 20 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>☁️ 云端存储配置</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>🔐 安全配置</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 500, display: 'block', marginBottom: 4 }}>后端服务地址</label>
-              <input
-                type="url"
-                placeholder="http://localhost:3001"
-                value={cloudUrl}
-                onChange={e => setCloudUrl(e.target.value)}
-                style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14 }}
-              />
-              <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>后端需实现 /oss/sign、/oss/download、/oss/delete 端点</p>
-            </div>
             <div>
               <label style={{ fontSize: 13, fontWeight: 500, display: 'block', marginBottom: 4 }}>签名算法</label>
               <select
@@ -149,6 +131,29 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* 云端说明 */}
+        <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: 20 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>☁️ 云端存储说明</h3>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+            <div>API 端点已通过 Vercel Functions 部署：</div>
+            <div style={{ fontFamily: 'monospace', background: 'var(--bg)', padding: '8px 12px', borderRadius: 6, marginTop: 8, fontSize: 12 }}>
+              GET  /api/health{'\n'}
+              POST /api/oss/sign{'\n'}
+              POST /api/oss/download{'\n'}
+              POST /api/oss/delete{'\n'}
+              POST /api/oss/list{'\n'}
+              POST /api/telecom/token
+            </div>
+            <div style={{ marginTop: 8 }}>请在 Vercel 后台设置以下环境变量：</div>
+            <div style={{ fontFamily: 'monospace', background: 'var(--bg)', padding: '8px 12px', borderRadius: 6, marginTop: 4, fontSize: 12 }}>
+              OSS_ACCESS_KEY_ID{'\n'}
+              OSS_ACCESS_KEY_SECRET{'\n'}
+              OSS_BUCKET{'\n'}
+              OSS_REGION
+            </div>
+          </div>
+        </div>
+
         {/* 数据管理 */}
         <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: 20 }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>🗂️ 数据管理</h3>
@@ -170,7 +175,7 @@ export default function Settings() {
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
             <div><strong>忆往昔 回忆录助手</strong> v1.0.0</div>
             <div>基于 React + Vite + TypeScript 构建</div>
-            <div>云端存储：阿里云 OSS（通过 presigned URL）</div>
+            <div>云端存储：阿里云 OSS（Vercel Functions presign）</div>
             <div>安全签名：HMAC-SHA256 / MD5</div>
             <div>隐私加密：AES-GCM（Web Crypto API）</div>
           </div>

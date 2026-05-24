@@ -7,19 +7,11 @@ import Friends from './components/Friends'
 import Settings from './components/Settings'
 import { createSDK, MemoirSDK } from './utils/sdk'
 
-const sdk: MemoirSDK = createSDK({
-  backendUrl: import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001',
-  ossBucket: import.meta.env.VITE_OSS_BUCKET,
-  ossRegion: import.meta.env.VITE_OSS_REGION,
-  ossEndpoint: import.meta.env.VITE_OSS_ENDPOINT,
-  signMode: import.meta.env.VITE_TELECOM_SIGN_MODE || 'hmac',
-  telecomAppId: import.meta.env.VITE_TELECOM_APP_ID,
-  encryptionKey: import.meta.env.VITE_ENCRYPTION_KEY || 'memoir-default-key',
-})
+const sdk: MemoirSDK = createSDK({})
 
 // 将 SDK 挂载到 window，方便各组件访问
 ;(window as any)._memoirSDK = sdk
-;(window as any)._memoirBackendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
+;(window as any)._memoirBackendUrl = ''  // 使用相对路径 /api/，无需指定域名
 
 const navItems = [
   { path: '/', label: '首页', icon: '🏠' },
