@@ -9,7 +9,7 @@
 
 import express from 'express'
 import cors from 'cors'
-import { OSS } from 'ali-oss'
+import OSS from 'ali-oss'
 import * as crypto from 'node:crypto'
 import { config } from 'dotenv'
 
