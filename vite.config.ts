@@ -18,6 +18,14 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/auth': {
+        target: 'http://localhost:3002',
+        changeOrigin: true,
+      },
+      '/memoir': {
+        target: 'http://localhost:3002',
+        changeOrigin: true,
+      },
       '/health': {
         target: 'http://localhost:3002',
         changeOrigin: true,

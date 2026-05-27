@@ -45,12 +45,29 @@ interface SDKConfig {
 }
 
 // ============ OSS 云存储服务 ============
+// 从 localStorage 获取认证 token
+function getAuthToken(): string | null {
+  return localStorage.getItem('memoir_auth_token')
+}
+
+// 带认证头的 fetch 封装
+async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const token = getAuthToken()
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string> || {}),
+  }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  return fetch(url, { ...options, headers })
+}
+
 export class OSSStorageService {
   constructor(config?: any) {}
 
   async getUploadUrl(key: string, contentType: string = 'application/octet-stream'): Promise<string> {
     const url = '/api/oss/sign'
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key, contentType, method: 'PUT' }),
@@ -93,7 +110,7 @@ export class OSSStorageService {
    */
   async getDownloadUrl(key: string): Promise<string> {
     const url = '/api/oss/download'
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key }),
@@ -118,7 +135,7 @@ export class OSSStorageService {
    */
   async deleteObject(key: string): Promise<void> {
     const url = '/api/oss/delete'
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key }),
@@ -131,7 +148,7 @@ export class OSSStorageService {
    */
   async listObjects(prefix: string): Promise<string[]> {
     const url = '/api/oss/list'
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prefix }),

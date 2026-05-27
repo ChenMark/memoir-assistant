@@ -8,8 +8,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:server": "cd server && npm run dev",
+    "dev:all": "concurrently \"npm run dev\" \"npm run dev:server\"",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "build:server": "cd server && npm run build",
+    "preview": "vite preview",
+    "postinstall": "cd server && npm install"
   },
   "dependencies": {
     "ali-oss": "^6.21.0",
