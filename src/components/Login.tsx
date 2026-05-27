@@ -31,6 +31,7 @@ export default function Login() {
   const [smsSending, setSmsSending] = useState(false)
 
   const [localError, setLocalError] = useState('')
+  const [demoing, setDemoing] = useState(false)
   const [thirdPartyLoading, setThirdPartyLoading] = useState<string | null>(null)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -64,19 +65,42 @@ export default function Login() {
     clearError()
   }
 
+  // ============ 演示登录（自动注册+登录）===========
+  const handleDemoLogin = async () => {
+    setDemoing(true)
+    setLocalError('')
+    clearError()
+    try {
+      // 先尝试登录
+      try {
+        await login('demo@memoir.test', 'demo123456')
+        navigate('/')
+        return
+      } catch {
+        // 登录失败，尝试注册
+      }
+      // 注册演示账号
+      await register('演示用户', 'demo@memoir.test', 'demo123456', undefined)
+      // 注册后登录
+      await login('demo@memoir.test', 'demo123456')
+      navigate('/')
+    } catch (err: any) {
+      setLocalError(err.message || '演示登录失败，请手动注册')
+    } finally {
+      setDemoing(false)
+    }
+  }
+
   const handleSendSMS = async () => {
     if (!/^1[3-9]\d{9}$/.test(phone)) {
       setLocalError('请输入有效的手机号码')
       return
     }
-
     setSmsSending(true)
     setLocalError('')
     clearError()
-
     const result = await sendSMSCode(phone)
     setSmsSending(false)
-
     if (result.success) {
       setSmsSent(true)
       setSmsCountdown(60)
@@ -92,17 +116,15 @@ export default function Login() {
     }
   }
 
-  // ============ 邮箱登录/注册 ============
+  // ============ 邮箱登录/注册 ===========
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLocalError('')
     clearError()
-
     if (!email.trim() || !password) {
       setLocalError('请填写所有必填项')
       return
     }
-
     if (mode === 'register') {
       if (!username.trim()) { setLocalError('请输入用户名'); return }
       if (password !== confirmPassword) { setLocalError('两次密码不一致'); return }
@@ -110,7 +132,6 @@ export default function Login() {
       if (regPhone && !/^1[3-9]\d{9}$/.test(regPhone)) {
         setLocalError('手机号格式不正确'); return
       }
-
       try {
         await register(username.trim(), email.trim(), password, regPhone || undefined)
         navigate('/')
@@ -123,12 +144,11 @@ export default function Login() {
     }
   }
 
-  // ============ 手机号验证码登录 ============
+  // ============ 手机号验证码登录 ===========
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLocalError('')
     clearError()
-
     if (!/^1[3-9]\d{9}$/.test(phone)) {
       setLocalError('请输入有效的手机号码')
       return
@@ -137,14 +157,13 @@ export default function Login() {
       setLocalError('请输入 6 位验证码')
       return
     }
-
     try {
       await phoneLogin(phone, smsCode)
       navigate('/')
     } catch {}
   }
 
-  // ============ 第三方登录 ============
+  // ============ 第三方登录 ===========
   const handleWechatLogin = async () => {
     setThirdPartyLoading('wechat')
     setLocalError('')
@@ -208,13 +227,13 @@ export default function Login() {
             {/* 登录/注册子 Tab */}
             <div className="auth-subtabs">
               <button
-                className={`auth-subtab ${mode === 'login' ? 'active' : ''}`}
-                onClick={() => switchMode('login')}
-              >登录</button>
+                  className={`auth-subtab ${mode === 'login' ? 'active' : ''}`}
+                  onClick={() => switchMode('login')}
+                >登录</button>
               <button
-                className={`auth-subtab ${mode === 'register' ? 'active' : ''}`}
-                onClick={() => switchMode('register')}
-              >注册</button>
+                  className={`auth-subtab ${mode === 'register' ? 'active' : ''}`}
+                  onClick={() => switchMode('register')}
+                >注册</button>
             </div>
 
             <form onSubmit={handleEmailSubmit} className="auth-form">
@@ -375,13 +394,23 @@ export default function Login() {
             <span>其他登录方式</span>
           </div>
           <div className="third-party-buttons">
+            {/* 演示登录按钮 */}
+            <button
+              className="social-btn demo"
+              onClick={handleDemoLogin}
+              disabled={loading || demoing}
+              title="演示登录（自动创建演示账号）"
+              style={{ background: '#6366f1', color: '#fff', border: '2px solid #6366f1', fontWeight: 600 }}
+            >
+              {demoing ? '登录中...' : '🎭 演示登录'}
+            </button>
             <button
               className="social-btn wechat"
               onClick={handleWechatLogin}
               disabled={loading || thirdPartyLoading === 'wechat'}
               title="微信登录"
             >
-              <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                 <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.952-7.062-6.122zm-1.18 2.769c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982z"/>
               </svg>
               <span>微信</span>
@@ -392,14 +421,14 @@ export default function Login() {
               disabled={loading || thirdPartyLoading === 'qq'}
               title="QQ登录"
             >
-              <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                <path d="M12.003 2c-2.265 0-6.29 1.364-6.29 7.325v1.195S3.55 14.96 3.55 17.474c0 .665.17 1.025.281 1.025.114 0 .902-.484 1.748-2.072 0 0-.18 2.197 1.904 3.967 0 0-1.77.495-2.234.689-.464.194-.69.776-.69 1.087 0 .312.22.49.498.49.236 0 4.194-1.185 8.946-1.185 4.752 0 8.946 1.185 8.946 1.185.278 0 .498-.178.498-.49 0-.311-.226-.893-.69-1.087-.463-.194-2.234-.689-2.234-.689 2.084-1.77 1.904-3.967 1.904-3.967.846 1.588 1.634 2.072 1.748 2.072.111 0 .281-.36.281-1.025 0-2.514-2.166-6.954-2.166-6.954V9.325C18.293 3.364 14.268 2 12.003 2z"/>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <path d="M12.003 2c-2.265 0-6.29 1.364-6.29 7.325v1.195S3.55 14.96 3.55 17.474c0 .665.17 1.025.281 1.025.114 0 .902-.484 1.748-2.072 0 0-.18 2.197 1.904 3.967 0 0-1.77.495-2.234.689-.464.194-.69.776-.69 1.087 0 .312.22.498.498 0 0 4.194-1.185 8.946-1.185 4.752 0 8.946 1.185 8.946 1.185.278 0 .498-.178.498-.49 0-.311-.226-.893-.69-1.087-.463-.194-2.234-.689-2.234-.689 2.084-1.77 1.904-3.967 1.904-3.967.846 1.588 1.634 2.072 1.748 2.072.111 0 .281-.36.281-1.025 0-2.514-2.166-6.954-2.166-6.954V9.325C18.293 3.364 14.268 2 12.003 2z"/>
               </svg>
               <span>QQ</span>
             </button>
           </div>
           <div className="third-party-hint">
-            演示模式下可直接点击登录
+            点击「演示登录」即可无需注册直接进入系统
           </div>
         </div>
       </div>

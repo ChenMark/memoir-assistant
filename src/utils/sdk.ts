@@ -28,6 +28,18 @@ export interface Friend {
   name: string
   avatar?: string
   addedAt: number
+  category: 'family' | 'classmate' | 'friend'
+  // 家族树
+  relationship?: string
+  generation?: number
+  parentId?: string
+  // 同学录
+  school?: string
+  classInfo?: string
+  graduationYear?: string
+  // 朋友圈
+  metAt?: string
+  metYear?: string
 }
 
 // ============ 环境配置 ============

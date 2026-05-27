@@ -40,7 +40,39 @@ export async function generateDownloadUrl(key: string): Promise<string> {
   return client.signatureUrl(key, { method: 'GET', expires: 3600 })
 }
 
-/** 从 OSS 读取 JSON 文件 */
+/** 本地存储降级：当 OSS 不可用时的数据目录 */
+const LOCAL_DATA_DIR = process.env.LOCAL_DATA_DIR || '../data'
+
+/** 生成本地文件路径 */
+function getLocalPath(key: string): string {
+  // 将 OSS key 转换为本地路径，例如 'memoir/users/users.json' → '../data/memoir/users/users.json'
+  return require('path').resolve(__dirname, '..', LOCAL_DATA_DIR, key)
+}
+
+/** 从本地文件读取 JSON（降级方案） */
+async function readLocalJSON<T = any>(key: string): Promise<T | null> {
+  const fs = require('fs/promises')
+  const path = getLocalPath(key)
+  try {
+    await fs.access(path)
+    const text = await fs.readFile(path, 'utf-8')
+    return JSON.parse(text) as T
+  } catch (err: any) {
+    if (err?.code === 'ENOENT') return null
+    throw err
+  }
+}
+
+/** 写 JSON 到本地文件（降级方案） */
+async function writeLocalJSON(key: string, data: any): Promise<void> {
+  const fs = require('fs/promises')
+  const path = getLocalPath(key)
+  const dir = require('path').dirname(path)
+  await fs.mkdir(dir, { recursive: true })
+  await fs.writeFile(path, JSON.stringify(data, null, 2), 'utf-8')
+}
+
+/** 从 OSS 读取 JSON 文件（带本地降级） */
 export async function readJSON<T = any>(key: string): Promise<T | null> {
   try {
     const client = getOSSClient()
@@ -49,18 +81,30 @@ export async function readJSON<T = any>(key: string): Promise<T | null> {
     return JSON.parse(text) as T
   } catch (err: any) {
     if (err?.code === 'NoSuchKey') return null
-    throw err
+    // OSS 失败，尝试本地降级
+    console.warn(`[OSS] readJSON 失败，降级到本地存储: ${key}`, err.message)
+    try {
+      return await readLocalJSON<T>(key)
+    } catch {
+      return null
+    }
   }
 }
 
-/** 写 JSON 文件到 OSS */
+/** 写 JSON 文件到 OSS（带本地降级） */
 export async function writeJSON(key: string, data: any): Promise<void> {
-  const client = getOSSClient()
-  const content = Buffer.from(JSON.stringify(data, null, 2), 'utf-8')
-  await client.put(key, content, {
-    mime: 'application/json',
-    headers: { 'Content-Type': 'application/json' },
-  })
+  try {
+    const client = getOSSClient()
+    const content = Buffer.from(JSON.stringify(data, null, 2), 'utf-8')
+    await client.put(key, content, {
+      mime: 'application/json',
+      headers: { 'Content-Type': 'application/json' },
+    })
+  } catch (err: any) {
+    // OSS 失败，降级到本地存储
+    console.warn(`[OSS] writeJSON 失败，降级到本地存储: ${key}`, err.message)
+    await writeLocalJSON(key, data)
+  }
 }
 
 /** 从 OSS 读取文本文件 */

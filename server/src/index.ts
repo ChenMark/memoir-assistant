@@ -28,6 +28,7 @@ config({ path: path.resolve(__dirname, '../../.env') })
 import authRoutes from './routes/auth.js'
 import ossRoutes from './routes/oss.js'
 import memoirRoutes from './routes/memoir.js'
+import aiRoutes from './routes/ai.js'
 
 const app = express()
 const PORT = process.env.BACKEND_PORT ? parseInt(process.env.BACKEND_PORT) : 3002
@@ -44,6 +45,7 @@ app.get('/health', (_req, res) => {
 app.use('/auth', authRoutes)
 app.use('/oss', ossRoutes)
 app.use('/memoir', memoirRoutes)
+app.use('/ai', aiRoutes)
 
 // ============ 电信能力平台 Token 交换 ============
 app.post('/telecom/token', async (req, res) => {

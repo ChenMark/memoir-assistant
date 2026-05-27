@@ -8,6 +8,7 @@ import Friends from './components/Friends'
 import Settings from './components/Settings'
 import Login from './components/Login'
 import UserManagement from './components/UserManagement'
+import AIInterview from './components/AIInterview'
 import { createSDK, MemoirSDK } from './utils/sdk'
 
 const sdk: MemoirSDK = createSDK({})
@@ -218,6 +219,7 @@ function AppLayout() {
           <Routes>
             {/* 受保护的路由 */}
             <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/interview" element={<ProtectedRoute><AIInterview /></ProtectedRoute>} />
             <Route path="/drafts" element={<ProtectedRoute><Drafts /></ProtectedRoute>} />
             <Route path="/gallery" element={<ProtectedRoute><Gallery /></ProtectedRoute>} />
             <Route path="/friends" element={<ProtectedRoute><Friends /></ProtectedRoute>} />

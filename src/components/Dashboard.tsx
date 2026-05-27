@@ -110,9 +110,9 @@ export default function Dashboard() {
       {/* 快捷操作 */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 36, flexWrap: 'wrap' }}>
         <button
-          onClick={() => navigate('/drafts')}
+          onClick={() => navigate('/interview')}
           style={{ padding: '10px 20px', background: 'var(--primary)', color: '#fff', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
-        >✏️ 写新回忆</button>
+        >🤖 开始AI引导访谈</button>
         <button
           onClick={() => navigate('/gallery')}
           style={{ padding: '10px 20px', background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
