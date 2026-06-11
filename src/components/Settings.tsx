@@ -100,7 +100,7 @@ export default function Settings() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {/* 安全配置 */}
         <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: 20 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>🔐 安全配置</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}> 安全配置</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <label style={{ fontSize: 13, fontWeight: 500, display: 'block', marginBottom: 4 }}>签名算法</label>
@@ -127,7 +127,7 @@ export default function Settings() {
               onClick={handleSave}
               disabled={saving}
               style={{ alignSelf: 'flex-start', padding: '8px 20px', background: saving ? '#94a3b8' : 'var(--primary)', color: '#fff', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
-            >{saved ? '✅ 已保存' : '保存配置'}</button>
+            >{saved ? ' 已保存' : '保存配置'}</button>
           </div>
         </div>
 
@@ -156,7 +156,7 @@ export default function Settings() {
 
         {/* 数据管理 */}
         <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: 20 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>🗂️ 数据管理</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>️ 数据管理</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
               本地存储：{storageInfo.drafts} 篇草稿 · {storageInfo.photos} 张照片 · {storageInfo.friends} 位亲友 · 共 {formatBytes(storageInfo.bytes)}
@@ -164,7 +164,7 @@ export default function Settings() {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button onClick={handleExport} style={{ padding: '8px 16px', background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13 }}>📤 导出备份</button>
               <button onClick={handleImport} style={{ padding: '8px 16px', background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13 }}>📥 导入备份</button>
-              <button onClick={handleClearData} disabled={clearing} style={{ padding: '8px 16px', background: clearing ? '#94a3b8' : 'rgba(239,68,68,0.08)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, fontSize: 13 }}>🗑️ 清空数据</button>
+              <button onClick={handleClearData} disabled={clearing} style={{ padding: '8px 16px', background: clearing ? '#94a3b8' : 'rgba(239,68,68,0.08)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, fontSize: 13 }}> 清空数据</button>
             </div>
           </div>
         </div>

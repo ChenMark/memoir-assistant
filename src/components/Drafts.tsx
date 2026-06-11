@@ -114,7 +114,7 @@ export default function Drafts() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 700 }}>📝 回忆录草稿</h2>
+        <h2 style={{ fontSize: 22, fontWeight: 700 }}> 回忆录草稿</h2>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             onClick={handleCloudSync}
@@ -205,7 +205,7 @@ export default function Drafts() {
                   </div>
                   <button
                     onClick={e => { e.stopPropagation(); handleDelete(draft.id) }}
-                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 12, padding: '2px 6px' }}
+                    style={{ background: 'none', border: 'none', color: '#c62828', cursor: 'pointer', fontSize: 12, padding: '2px 6px' }}
                   >删除</button>
                 </div>
               ))}

@@ -63,9 +63,9 @@ export default function Dashboard() {
   }
 
   const statCards = [
-    { label: '回忆录草稿', value: stats.draftCount, unit: '篇', color: '#6366f1', action: () => navigate('/drafts') },
-    { label: '云端照片', value: stats.photoCount, unit: '张', color: '#22c55e', action: () => navigate('/gallery') },
-    { label: '亲友共享', value: stats.friendCount, unit: '人', color: '#f59e0b', action: () => navigate('/friends') },
+    { label: '回忆录草稿', value: stats.draftCount, unit: '篇', color: '#b8860b', action: () => navigate('/drafts') },
+    { label: '云端照片', value: stats.photoCount, unit: '张', color: '#2e7d32', action: () => navigate('/gallery') },
+    { label: '亲友共享', value: stats.friendCount, unit: '人', color: '#f57f17', action: () => navigate('/friends') },
     { label: '总字数', value: formatWords(stats.totalWords), unit: '', color: '#3b82f6', action: undefined },
   ]
 
@@ -112,15 +112,15 @@ export default function Dashboard() {
         <button
           onClick={() => navigate('/interview')}
           style={{ padding: '10px 20px', background: 'var(--primary)', color: '#fff', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
-        >🤖 开始AI引导访谈</button>
+        > 开始AI引导访谈</button>
         <button
           onClick={() => navigate('/gallery')}
           style={{ padding: '10px 20px', background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
-        >📷 上传照片</button>
+        > 上传照片</button>
         <button
           onClick={() => navigate('/friends')}
           style={{ padding: '10px 20px', background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
-        >👥 邀请亲友</button>
+        > 邀请亲友</button>
       </div>
 
       {/* 最近草稿 */}
@@ -128,7 +128,7 @@ export default function Dashboard() {
         <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>最近草稿</h3>
         {recentDrafts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-secondary)', fontSize: 14 }}>
-            还没有草稿，点击「写新回忆」开始创作 📝
+            还没有草稿，点击「写新回忆」开始创作 
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

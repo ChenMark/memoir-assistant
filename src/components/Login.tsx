@@ -193,7 +193,7 @@ export default function Login() {
       <div className="auth-card" style={{ width: 440 }}>
         {/* Logo */}
         <div className="auth-header">
-          <div className="auth-logo">📖</div>
+          <div className="auth-logo">忆</div>
           <h1>忆往昔</h1>
           <p>AI 回忆录助手</p>
         </div>
@@ -204,20 +204,20 @@ export default function Login() {
             className={`auth-tab ${tab === 'email' ? 'active' : ''}`}
             onClick={() => switchTab('email')}
           >
-            📧 邮箱登录
+            邮箱登录
           </button>
           <button
             className={`auth-tab ${tab === 'phone' ? 'active' : ''}`}
             onClick={() => switchTab('phone')}
           >
-            📱 手机登录
+            手机登录
           </button>
         </div>
 
         {/* 错误提示 */}
         {displayError && (
           <div className="auth-error">
-            <span>⚠️</span> {displayError}
+            <span></span> {displayError}
           </div>
         )}
 
@@ -400,9 +400,8 @@ export default function Login() {
               onClick={handleDemoLogin}
               disabled={loading || demoing}
               title="演示登录（自动创建演示账号）"
-              style={{ background: '#6366f1', color: '#fff', border: '2px solid #6366f1', fontWeight: 600 }}
             >
-              {demoing ? '登录中...' : '🎭 演示登录'}
+              {demoing ? '登录中...' : '演示登录'}
             </button>
             <button
               className="social-btn wechat"

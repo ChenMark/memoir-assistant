@@ -18,10 +18,10 @@ const sdk: MemoirSDK = createSDK({})
 ;(window as any)._memoirBackendUrl = ''  // 使用相对路径 /api/，无需指定域名
 
 const navItems = [
-  { path: '/', label: '首页', icon: '🏠' },
-  { path: '/drafts', label: '草稿', icon: '📝' },
+  { path: '/', label: '首页', icon: '' },
+  { path: '/drafts', label: '草稿', icon: '' },
   { path: '/gallery', label: '相册', icon: '🖼️' },
-  { path: '/friends', label: '亲友', icon: '👥' },
+  { path: '/friends', label: '亲友', icon: '' },
   { path: '/settings', label: '设置', icon: '⚙️' },
 ]
 
@@ -117,7 +117,7 @@ function AppLayout() {
             >
               <div style={{
                 width: 36, height: 36, borderRadius: '50%',
-                background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+                background: 'linear-gradient(135deg, #b8860b, #a855f7)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 color: '#fff', fontSize: 16, fontWeight: 600, flexShrink: 0,
               }}>

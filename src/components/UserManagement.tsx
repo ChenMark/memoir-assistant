@@ -41,7 +41,7 @@ export default function UserManagement() {
             {/* 头像 */}
             <div style={{
               width: 72, height: 72, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+              background: 'linear-gradient(135deg, #b8860b, #a855f7)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               color: '#fff', fontSize: 32, fontWeight: 700, flexShrink: 0,
             }}>
@@ -56,7 +56,7 @@ export default function UserManagement() {
               <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{user.email}</div>
               {user.phone && (
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                  📱 {maskPhone(user.phone)} {user.phoneVerified && <span style={{ color: 'var(--success)', fontSize: 11 }}>✓ 已验证</span>}
+                   {maskPhone(user.phone)} {user.phoneVerified && <span style={{ color: 'var(--success)', fontSize: 11 }}>✓ 已验证</span>}
                 </div>
               )}
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
@@ -85,7 +85,7 @@ export default function UserManagement() {
             <div>
               <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>手机号</div>
               <div style={{ fontSize: 14 }}>
-                {user.phone ? `${maskPhone(user.phone)} ${user.phoneVerified ? '✅' : ''}` : '未绑定'}
+                {user.phone ? `${maskPhone(user.phone)} ${user.phoneVerified ? '' : ''}` : '未绑定'}
               </div>
             </div>
             <div>
@@ -111,7 +111,7 @@ export default function UserManagement() {
               cursor: 'pointer',
             }}
           >
-            🔄 刷新信息
+             刷新信息
           </button>
         </div>
 
@@ -174,7 +174,7 @@ export default function UserManagement() {
 
         {/* 安全设置 */}
         <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: 20 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>🔐 安全设置</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}> 安全设置</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -228,7 +228,7 @@ export default function UserManagement() {
 
         {/* 账户操作 */}
         <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: 20 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16, color: 'var(--danger)' }}>⚠️ 账户操作</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16, color: 'var(--danger)' }}> 账户操作</h3>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <button
               onClick={() => setShowLogoutConfirm(true)}

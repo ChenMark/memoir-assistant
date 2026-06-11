@@ -262,7 +262,7 @@ export default function AIInterview() {
       {/* 右侧：故事预览 */}
       <div style={{ width: 400, display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)' }}>
         <div style={{ padding: 16, borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600 }}>📝 故事脉络</h3>
+          <h3 style={{ fontSize: 16, fontWeight: 600 }}> 故事脉络</h3>
           <button
             onClick={() => handleGenerateStory()}
             disabled={generating || messages.length === 0}

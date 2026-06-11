@@ -104,7 +104,7 @@ export default function Gallery() {
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
             style={{ padding: '8px 20px', background: uploading ? '#94a3b8' : 'var(--primary)', color: '#fff', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
-          >📷 {uploading ? `上传中 ${progress}%` : '上传照片'}</button>
+          > {uploading ? `上传中 ${progress}%` : '上传照片'}</button>
           <input
             ref={fileRef}
             type="file"
@@ -122,7 +122,7 @@ export default function Gallery() {
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8 }}>
             <span>正在上传到云端... <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{progress}%</span></span>
           </div>
-          <div style={{ height: 6, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+          <div style={{ height: 6, background: '#e8d8b8', borderRadius: 3, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${progress}%`, background: 'var(--primary)', borderRadius: 3, transition: 'width 0.3s' }} />
           </div>
         </div>
@@ -133,14 +133,14 @@ export default function Gallery() {
         <span>共 {photos.length} 张照片</span>
         <span>·</span>
         <span>总计 {formatSize(totalSize)}</span>
-        {cloudStatus === 'success' && <span style={{ color: 'var(--success)' }}>✅ 云端上传成功</span>}
-        {cloudStatus === 'error' && <span style={{ color: 'var(--danger)' }}>❌ 部分上传失败</span>}
+        {cloudStatus === 'success' && <span style={{ color: 'var(--success)' }}> 云端上传成功</span>}
+        {cloudStatus === 'error' && <span style={{ color: 'var(--danger)' }}> 部分上传失败</span>}
       </div>
 
       {/* 照片网格 */}
       {filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 64, background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)' }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>📷</div>
+          <div style={{ fontSize: 48, marginBottom: 16 }}></div>
           <div style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 16 }}>还没有照片，点击「上传照片」开始</div>
           <button
             onClick={() => fileRef.current?.click()}
