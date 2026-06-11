@@ -8,16 +8,76 @@ export default function AIInterview() {
   
   // =========== 状态管理 ===========
   const [dimensions, setDimensions] = useState<InterviewDimension[]>([])
-  const [currentDimension, setCurrentDimension] = useState<string>('')
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [currentDimension, setCurrentDimension] = useState<string>(() => {
+    try {
+      return localStorage.getItem('memoir_interview_dimension') || ''
+    } catch {
+      return ''
+    }
+  })
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    // 从 localStorage 恢复对话记录（按维度分开存储）
+    try {
+      const savedDimId = localStorage.getItem('memoir_interview_dimension')
+      const key = savedDimId ? `memoir_interview_messages_${savedDimId}` : 'memoir_interview_messages'
+      const saved = localStorage.getItem(key)
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [storyDraft, setStoryDraft] = useState<string>('')
+  const [storyDraft, setStoryDraft] = useState<string>(() => {
+    // 从 localStorage 恢复故事草稿（按维度分开存储）
+    try {
+      const savedDimId = localStorage.getItem('memoir_interview_dimension')
+      const key = savedDimId ? `memoir_interview_story_${savedDimId}` : 'memoir_interview_story'
+      return localStorage.getItem(key) || ''
+    } catch {
+      return ''
+    }
+  })
   const [generating, setGenerating] = useState(false)
-  const [phase, setPhase] = useState<'interview' | 'story'>('interview')
+  const [phase, setPhase] = useState<'interview' | 'story'>(() => {
+    // 从 localStorage 恢复阶段（按维度分开存储）
+    try {
+      const savedDimId = localStorage.getItem('memoir_interview_dimension')
+      const key = savedDimId ? `memoir_interview_phase_${savedDimId}` : 'memoir_interview_phase'
+      return (localStorage.getItem(key) as 'interview' | 'story') || 'interview'
+    } catch {
+      return 'interview'
+    }
+  })
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  // =========== 自动保存对话到 localStorage ===========
+  useEffect(() => {
+    try {
+      const key = currentDimension ? `memoir_interview_messages_${currentDimension}` : 'memoir_interview_messages'
+      localStorage.setItem(key, JSON.stringify(messages))
+    } catch {}
+  }, [messages, currentDimension])
+
+  useEffect(() => {
+    try { localStorage.setItem('memoir_interview_dimension', currentDimension) } catch {}
+  }, [currentDimension])
+
+  useEffect(() => {
+    try {
+      const key = currentDimension ? `memoir_interview_story_${currentDimension}` : 'memoir_interview_story'
+      localStorage.setItem(key, storyDraft)
+    } catch {}
+  }, [storyDraft, currentDimension])
+
+  useEffect(() => {
+    try {
+      const key = currentDimension ? `memoir_interview_phase_${currentDimension}` : 'memoir_interview_phase'
+      localStorage.setItem(key, phase)
+    } catch {}
+  }, [phase, currentDimension])
 
   // =========== 初始化 ===========
   useEffect(() => {
@@ -33,9 +93,25 @@ export default function AIInterview() {
     try {
       const dims = await getDimensions()
       setDimensions(dims)
-      if (dims.length > 0) {
+      
+      // 检查是否有已保存的对话（从 localStorage 恢复）
+      const savedDimId = localStorage.getItem('memoir_interview_dimension')
+      const messagesKey = savedDimId ? `memoir_interview_messages_${savedDimId}` : 'memoir_interview_messages'
+      const savedMessagesRaw = localStorage.getItem(messagesKey)
+      let hasSavedMessages = false
+      try { hasSavedMessages = savedMessagesRaw ? JSON.parse(savedMessagesRaw).length > 0 : false } catch {}
+      
+      if (hasSavedMessages) {
+        // 有已保存的对话，恢复维度而不开始新访谈
+        if (savedDimId && dims.find(d => d.id === savedDimId)) {
+          setCurrentDimension(savedDimId)
+        } else if (dims.length > 0) {
+          setCurrentDimension(dims[0].id)
+        }
+        // 不调用 startInterview，保留已保存的消息
+      } else if (dims.length > 0) {
+        // 没有已保存的对话，开始新访谈
         setCurrentDimension(dims[0].id)
-        // 自动发送第一条引导消息
         startInterview(dims[0].id)
       }
     } catch (err: any) {
@@ -129,7 +205,27 @@ export default function AIInterview() {
   const handleDimensionChange = (dimId: string) => {
     if (dimId === currentDimension) return
     setCurrentDimension(dimId)
+    // 尝试从 localStorage 恢复该维度的对话
+    try {
+      const key = `memoir_interview_messages_${dimId}`
+      const saved = localStorage.getItem(key)
+      if (saved && JSON.parse(saved).length > 0) {
+        // 有已保存的对话，恢复而不开始新访谈
+        const savedMessages = JSON.parse(saved)
+        setMessages(savedMessages)
+        const storyKey = `memoir_interview_story_${dimId}`
+        const savedStory = localStorage.getItem(storyKey) || ''
+        setStoryDraft(savedStory)
+        const phaseKey = `memoir_interview_phase_${dimId}`
+        const savedPhase = localStorage.getItem(phaseKey) || 'interview'
+        setPhase(savedPhase as 'interview' | 'story')
+        return
+      }
+    } catch {}
+    // 没有已保存的对话，开始新访谈
     setMessages([])
+    setStoryDraft('')
+    setPhase('interview')
     startInterview(dimId)
   }
 

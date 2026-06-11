@@ -114,7 +114,7 @@ export default function Drafts() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 700 }}> 回忆录草稿</h2>
+        <h2 style={{ fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}> 回忆录草稿</h2>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             onClick={handleCloudSync}
@@ -182,7 +182,7 @@ export default function Drafts() {
 
         {/* 草稿列表 */}
         <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: 20, overflowY: 'auto', maxHeight: 600 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>所有草稿 ({filteredDrafts.length})</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16, fontFamily: 'var(--font-serif)' }}>所有草稿 ({filteredDrafts.length})</h3>
           {filteredDrafts.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-secondary)', fontSize: 13 }}>
               {searchTerm ? '没有找到匹配的草稿' : '还没有草稿，点击「新草稿」开始'}

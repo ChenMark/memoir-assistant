@@ -33,6 +33,7 @@ export interface Friend {
   relationship?: string
   generation?: number
   parentId?: string
+  spouseId?: string  // 配偶ID，用于建立夫妻关系
   // 同学录
   school?: string
   classInfo?: string
@@ -40,6 +41,7 @@ export interface Friend {
   // 朋友圈
   metAt?: string
   metYear?: string
+  tags?: string[]  // 标签，如工作单位、兴趣组等
 }
 
 // ============ 环境配置 ============

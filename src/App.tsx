@@ -88,7 +88,7 @@ function AppLayout() {
         className="sidebar"
         style={{
           width: 220,
-          background: 'var(--bg-card)',
+          background: 'var(--wood-100)',
           borderRight: '1px solid var(--border)',
           display: 'flex', flexDirection: 'column',
           position: 'fixed',
@@ -99,7 +99,7 @@ function AppLayout() {
         }}
       >
         <div style={{ padding: '24px 20px', borderBottom: '1px solid var(--border)' }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--primary)' }}>忆往昔</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--primary)', fontFamily: 'var(--font-serif)', fontStyle: 'italic', letterSpacing: '-0.02em' }}>忆往昔</h1>
           <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>AI 回忆录助手</p>
         </div>
 

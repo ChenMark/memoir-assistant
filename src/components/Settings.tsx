@@ -95,12 +95,12 @@ export default function Settings() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 24 }}>⚙️ 设置</h2>
+      <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 32, fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>⚙️ 设置</h2>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {/* 安全配置 */}
         <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: 20 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}> 安全配置</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16, fontFamily: 'var(--font-serif)' }}> 安全配置</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <label style={{ fontSize: 13, fontWeight: 500, display: 'block', marginBottom: 4 }}>签名算法</label>
@@ -133,7 +133,7 @@ export default function Settings() {
 
         {/* 云端说明 */}
         <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: 20 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>☁️ 云端存储说明</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16, fontFamily: 'var(--font-serif)' }}>☁️ 云端存储说明</h3>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
             <div>API 端点已通过 Vercel Functions 部署：</div>
             <div style={{ fontFamily: 'monospace', background: 'var(--bg)', padding: '8px 12px', borderRadius: 6, marginTop: 8, fontSize: 12 }}>
@@ -156,7 +156,7 @@ export default function Settings() {
 
         {/* 数据管理 */}
         <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: 20 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>️ 数据管理</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16, fontFamily: 'var(--font-serif)' }}>🗄️ 数据管理</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
               本地存储：{storageInfo.drafts} 篇草稿 · {storageInfo.photos} 张照片 · {storageInfo.friends} 位亲友 · 共 {formatBytes(storageInfo.bytes)}
@@ -171,9 +171,9 @@ export default function Settings() {
 
         {/* 关于 */}
         <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: 20 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>ℹ️ 关于</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16, fontFamily: 'var(--font-serif)' }}>ℹ️ 关于</h3>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
-            <div><strong>忆往昔 回忆录助手</strong> v1.0.0</div>
+            <div><strong>忆往昔 回忆录助手</strong> v2.0.0</div>
             <div>基于 React + Vite + TypeScript 构建</div>
             <div>云端存储：阿里云 OSS（Vercel Functions presign）</div>
             <div>安全签名：HMAC-SHA256 / MD5</div>

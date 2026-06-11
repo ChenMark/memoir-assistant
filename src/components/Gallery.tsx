@@ -91,7 +91,7 @@ export default function Gallery() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 700 }}>🖼️ 回忆相册</h2>
+        <h2 style={{ fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>🖼️ 回忆相册</h2>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <input
             type="text"
@@ -139,7 +139,7 @@ export default function Gallery() {
 
       {/* 照片网格 */}
       {filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 64, background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)' }}>
+        <div style={{ textAlign: 'center', padding: 48, background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)' }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}></div>
           <div style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 16 }}>还没有照片，点击「上传照片」开始</div>
           <button

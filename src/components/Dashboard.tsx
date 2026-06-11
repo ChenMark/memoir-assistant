@@ -71,8 +71,8 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>欢迎回来 👋</h2>
-      <p style={{ color: 'var(--text-secondary)', marginBottom: 28, fontSize: 14 }}>
+      <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>欢迎回来 👋</h2>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: 32, fontSize: 14 }}>
         上次编辑：{formatTime(stats.lastEdited)} · 云端状态：
         <span style={{ color: cloudStatus === 'online' ? 'var(--success)' : cloudStatus === 'offline' ? 'var(--danger)' : 'var(--warning)' }}>
           {cloudStatus === 'online' ? ' 🟢 已连接' : cloudStatus === 'offline' ? ' 🔴 未连接' : ' 🟡 检测中...'}
@@ -83,7 +83,7 @@ export default function Dashboard() {
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: 16, marginBottom: 36,
+        gap: 24, marginBottom: 48,
       }}>
         {statCards.map(card => (
           <div
@@ -92,7 +92,7 @@ export default function Dashboard() {
             style={{
               background: 'var(--bg-card)',
               borderRadius: 'var(--radius)',
-              padding: '24px 20px',
+              padding: '28px 24px',
               boxShadow: 'var(--shadow)',
               cursor: card.action ? 'pointer' : 'default',
               borderLeft: `4px solid ${card.color}`,
@@ -108,7 +108,7 @@ export default function Dashboard() {
       </div>
 
       {/* 快捷操作 */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 36, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 48, flexWrap: 'wrap' }}>
         <button
           onClick={() => navigate('/interview')}
           style={{ padding: '10px 20px', background: 'var(--primary)', color: '#fff', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
@@ -124,8 +124,8 @@ export default function Dashboard() {
       </div>
 
       {/* 最近草稿 */}
-      <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: 20 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>最近草稿</h3>
+      <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: 28 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 20, fontFamily: 'var(--font-serif)' }}>最近草稿</h3>
         {recentDrafts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-secondary)', fontSize: 14 }}>
             还没有草稿，点击「写新回忆」开始创作 
@@ -136,7 +136,7 @@ export default function Dashboard() {
               <div
                 key={draft.id}
                 onClick={() => navigate(`/drafts?id=${draft.id}`)}
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg)', borderRadius: 8, cursor: 'pointer', transition: 'background 0.1s' }}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', background: 'var(--bg)', borderRadius: 8, cursor: 'pointer', transition: 'background 0.1s' }}
                 onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'var(--bg)')}
               >

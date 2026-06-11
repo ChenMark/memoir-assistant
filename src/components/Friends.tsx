@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { MemoirSDK, Friend } from '../utils/sdk'
 import FamilyTree from './FamilyTree'
 
@@ -29,11 +29,13 @@ export default function Friends() {
     relationship: string
     generation: string
     parentId: string
+    spouseId: string
     school: string
     classInfo: string
     graduationYear: string
     metAt: string
     metYear: string
+    tags: string  // 逗号分隔的标签
   }>({
     name: '',
     avatar: '',
@@ -41,11 +43,13 @@ export default function Friends() {
     relationship: '',
     generation: '0',
     parentId: '',
+    spouseId: '',
     school: '',
     classInfo: '',
     graduationYear: '',
     metAt: '',
     metYear: '',
+    tags: '',
   })
 
   const loadFriends = useCallback(() => {
@@ -70,6 +74,7 @@ export default function Friends() {
         relationship: form.relationship || undefined,
         generation: form.generation ? parseInt(form.generation) : 0,
         parentId: form.parentId || undefined,
+        spouseId: form.spouseId || undefined,
       } : {}),
       ...(form.category === 'classmate' ? {
         school: form.school || undefined,
@@ -79,14 +84,15 @@ export default function Friends() {
       ...(form.category === 'friend' ? {
         metAt: form.metAt || undefined,
         metYear: form.metYear || undefined,
+        tags: form.tags ? form.tags.split(/[,，]/).map(t => t.trim()).filter(Boolean) : undefined,
       } : {}),
     }
     sdk.saveFriend(friend)
     setForm({
       name: '', avatar: '', category: 'family',
-      relationship: '', generation: '0', parentId: '',
+      relationship: '', generation: '0', parentId: '', spouseId: '',
       school: '', classInfo: '', graduationYear: '',
-      metAt: '', metYear: '',
+      metAt: '', metYear: '', tags: '',
     })
     setShowAdd(false)
     loadFriends()
@@ -113,6 +119,30 @@ export default function Friends() {
       }, {})
     : {}
 
+  // 朋友圈：按标签分组（一个人可以有多个标签）
+  const friendsByTag = activeTab === 'friend'
+    ? filtered.reduce<Record<string, Friend[]>>((acc, f) => {
+        const tagList = f.tags && f.tags.length > 0 ? f.tags : ['未分类']
+        tagList.forEach(tag => {
+          if (!acc[tag]) acc[tag] = []
+          // 避免同一人在同一标签下重复出现
+          if (!acc[tag].find(x => x.id === f.id)) {
+            acc[tag].push(f)
+          }
+        })
+        return acc
+      }, {})
+    : {}
+
+  // 收集所有已有标签（用于表单下拉选择）
+  const existingTags = useMemo(() => {
+    const tagSet = new Set<string>()
+    friends.filter(f => f.category === 'friend' && f.tags).forEach(f => {
+      f.tags!.forEach(t => tagSet.add(t))
+    })
+    return Array.from(tagSet).sort()
+  }, [friends])
+
   const formatTime = (ts: number) =>
     new Date(ts).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' })
 
@@ -120,7 +150,7 @@ export default function Friends() {
     <div>
       {/* 标题栏 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 700 }}> 亲友管理</h2>
+        <h2 style={{ fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}> 亲友管理</h2>
         <button
           onClick={() => { setForm(f => ({ ...f, category: activeTab })); setShowAdd(true) }}
           style={{ padding: '8px 20px', background: 'var(--primary)', color: '#fff', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
@@ -152,7 +182,7 @@ export default function Friends() {
 
       {/* 内容区 */}
       {filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 64, background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)' }}>
+        <div style={{ textAlign: 'center', padding: 48, background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)' }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>
             {activeTab === 'family' ? '' : activeTab === 'classmate' ? '' : ''}
           </div>
@@ -187,11 +217,27 @@ export default function Friends() {
             </div>
           )}
 
-          {/* 朋友圈：列表 */}
+          {/* 朋友圈：按标签分组 */}
           {activeTab === 'friend' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
-              {filtered.map(f => (
-                <FriendCard key={f.id} friend={f} onDelete={handleDelete} formatTime={formatTime} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {Object.entries(friendsByTag).map(([tag, list]) => (
+                <div key={tag} style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: 20 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      padding: '4px 12px', background: 'var(--primary)', color: '#fff',
+                      borderRadius: 16, fontSize: 13
+                    }}>
+                      {tag}
+                    </span>
+                    <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 400 }}>({list.length}人)</span>
+                  </h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+                    {list.map(f => (
+                      <FriendCard key={`${tag}-${f.id}`} friend={f} onDelete={handleDelete} formatTime={formatTime} />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           )}
@@ -253,6 +299,16 @@ export default function Friends() {
                       ))}
                     </select>
                   </div>
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 500, display: 'block', marginBottom: 4 }}>配偶（可选）</label>
+                    <select value={form.spouseId} onChange={e => setForm(f => ({ ...f, spouseId: e.target.value }))}
+                      style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, background: '#fff' }}>
+                      <option value="">-- 无 --</option>
+                      {friends.filter(f => f.category === 'family' && f.id !== form.parentId).map(f => (
+                        <option key={f.id} value={f.id}>{f.name}（{f.relationship || '未设置关系'}）</option>
+                      ))}
+                    </select>
+                  </div>
                 </>
               )}
 
@@ -280,6 +336,39 @@ export default function Friends() {
               {/* 朋友圈专属字段 */}
               {form.category === 'friend' && (
                 <>
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 500, display: 'block', marginBottom: 4 }}>标签（单位/分组）</label>
+                    <input
+                      type="text"
+                      placeholder="如：华为公司、大学同学、棋友（多个用逗号分隔）"
+                      value={form.tags}
+                      onChange={e => setForm(f => ({ ...f, tags: e.target.value }))}
+                      style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14 }}
+                    />
+                    {existingTags.length > 0 && (
+                      <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>已有标签：</span>
+                        {existingTags.map(tag => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => {
+                              const current = form.tags.split(/[,，]/).map(t => t.trim()).filter(Boolean)
+                              if (!current.includes(tag)) {
+                                setForm(f => ({ ...f, tags: f.tags ? `${f.tags}, ${tag}` : tag }))
+                              }
+                            }}
+                            style={{
+                              padding: '2px 10px', borderRadius: 12, border: '1px solid var(--border)',
+                              background: form.tags.includes(tag) ? 'var(--primary)' : 'var(--bg)',
+                              color: form.tags.includes(tag) ? '#fff' : 'var(--text)',
+                              fontSize: 11, cursor: 'pointer', transition: 'all 0.15s'
+                            }}
+                          >{tag}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <div>
                     <label style={{ fontSize: 13, fontWeight: 500, display: 'block', marginBottom: 4 }}>认识地点</label>
                     <input type="text" placeholder="如：公司、健身房" value={form.metAt} onChange={e => setForm(f => ({ ...f, metAt: e.target.value }))}
@@ -347,8 +436,21 @@ function FriendCard({ friend, onDelete, formatTime }: { friend: Friend; onDelete
         {/* 朋友圈 */}
         {friend.category === 'friend' && (
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-            {friend.metAt && <span>📍 {friend.metAt} </span>}
-            {friend.metYear && <span>· {friend.metYear}年认识</span>}
+            {friend.tags && friend.tags.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 3 }}>
+                {friend.tags.map(tag => (
+                  <span key={tag} style={{
+                    padding: '1px 8px', borderRadius: 10, background: '#f3e8ff',
+                    color: '#7c3aed', fontSize: 10, fontWeight: 500,
+                    border: '1px solid #e9d5ff'
+                  }}>{tag}</span>
+                ))}
+              </div>
+            )}
+            <div>
+              {friend.metAt && <span>📍 {friend.metAt} </span>}
+              {friend.metYear && <span>· {friend.metYear}年认识</span>}
+            </div>
           </div>
         )}
       </div>
