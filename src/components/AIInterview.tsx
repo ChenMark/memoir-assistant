@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getDimensions, sendMessage, generateStory, ChatMessage, InterviewDimension } from '../utils/aiService'
+import jsPDF from 'jspdf'
 
 export default function AIInterview() {
   const navigate = useNavigate()
@@ -157,6 +158,138 @@ export default function AIInterview() {
     }
   }
 
+  // =========== 导出功能 ===========
+
+  const handleExportWord = () => {
+    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+      <head><meta charset="utf-8"><title>回忆录</title>
+      <style>
+        body { font-family: 'SimSun', '宋体', serif; line-height: 1.8; max-width: 800px; margin: 40px auto; padding: 20px; }
+        h1 { color: #2d3748; border-bottom: 2px solid #b8860b; padding-bottom: 10px; }
+        h2 { color: #4a5568; margin-top: 30px; }
+        p { margin: 10px 0; }
+      </style></head>
+      <body>${storyDraft.replace(/\n/g, '<br>')}</body></html>`
+    const blob = new Blob([html], { type: 'application/msword' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `回忆录_${new Date().toISOString().slice(0, 10)}.doc`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleExportPDF = () => {
+    try {
+      const doc = new jsPDF()
+      
+      // 设置中文字体（使用系统字体）
+      doc.setFont('helvetica')
+      
+      // 解析markdown内容
+      const lines = storyDraft.split('\n')
+      let yPosition = 20
+      const pageWidth = doc.internal.pageSize.getWidth()
+      const margin = 20
+      const maxWidth = pageWidth - 2 * margin
+      
+      // 添加标题
+      doc.setFontSize(20)
+      doc.text('我的回忆录', pageWidth / 2, yPosition, { align: 'center' })
+      yPosition += 15
+      
+      // 添加分割线
+      doc.setDrawColor(184, 134, 11) // #b8860b
+      doc.line(margin, yPosition, pageWidth - margin, yPosition)
+      yPosition += 10
+      
+      // 添加日期
+      doc.setFontSize(10)
+      doc.setTextColor(120, 120, 120)
+      doc.text(`生成日期: ${new Date().toLocaleDateString('zh-CN')}`, margin, yPosition)
+      yPosition += 15
+      doc.setTextColor(0, 0, 0)
+      
+      // 处理内容
+      doc.setFontSize(12)
+      for (const line of lines) {
+        if (line.startsWith('# ')) {
+          // 一级标题
+          doc.setFontSize(16)
+          doc.setFont('helvetica', 'bold')
+          const text = line.substring(2)
+          const splitText = doc.splitTextToSize(text, maxWidth)
+          doc.text(splitText, margin, yPosition)
+          yPosition += splitText.length * 7 + 5
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(12)
+        } else if (line.startsWith('## ')) {
+          // 二级标题
+          doc.setFontSize(14)
+          doc.setFont('helvetica', 'bold')
+          const text = line.substring(3)
+          const splitText = doc.splitTextToSize(text, maxWidth)
+          doc.text(splitText, margin, yPosition)
+          yPosition += splitText.length * 6 + 5
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(12)
+        } else if (line.startsWith('### ')) {
+          // 三级标题
+          doc.setFontSize(13)
+          doc.setFont('helvetica', 'bold')
+          const text = line.substring(4)
+          const splitText = doc.splitTextToSize(text, maxWidth)
+          doc.text(splitText, margin, yPosition)
+          yPosition += splitText.length * 5 + 3
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(12)
+        } else if (line.startsWith('> ')) {
+          // 引用
+          doc.setFontSize(11)
+          doc.setTextColor(100, 100, 100)
+          const text = line.substring(2)
+          const splitText = doc.splitTextToSize(text, maxWidth - 10)
+          doc.text(splitText, margin + 5, yPosition)
+          yPosition += splitText.length * 5 + 3
+          doc.setTextColor(0, 0, 0)
+          doc.setFontSize(12)
+        } else if (line.trim() === '---') {
+          // 分割线
+          doc.setDrawColor(200, 200, 200)
+          doc.line(margin, yPosition, pageWidth - margin, yPosition)
+          yPosition += 10
+        } else if (line.trim() === '') {
+          // 空行
+          yPosition += 5
+        } else {
+          // 普通段落
+          const text = line.replace(/\*\*(.*?)\*\*/g, '$1') // 移除粗体标记
+          const splitText = doc.splitTextToSize(text, maxWidth)
+          
+          // 检查是否需要换页
+          if (yPosition + splitText.length * 5 > doc.internal.pageSize.getHeight() - margin) {
+            doc.addPage()
+            yPosition = margin
+          }
+          
+          doc.text(splitText, margin, yPosition)
+          yPosition += splitText.length * 5 + 3
+        }
+        
+        // 检查页面边界
+        if (yPosition > doc.internal.pageSize.getHeight() - margin) {
+          doc.addPage()
+          yPosition = margin
+        }
+      }
+      
+      // 保存PDF
+      doc.save(`回忆录_${new Date().toISOString().slice(0, 10)}.pdf`)
+    } catch (err: any) {
+      alert(`导出PDF失败: ${err.message}`)
+    }
+  }
+
   // =========== 渲染 ===========
   const currentDim = dimensions.find(d => d.id === currentDimension)
 
@@ -266,8 +399,9 @@ export default function AIInterview() {
 
       {/* 右侧：故事预览 */}
       <div style={{ width: 400, display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)' }}>
-        <div style={{ padding: 16, borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: 16, borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <h3 style={{ fontSize: 16, fontWeight: 600 }}> 故事脉络</h3>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button
             onClick={() => handleGenerateStory()}
             disabled={generating || messages.length === 0}
@@ -283,6 +417,39 @@ export default function AIInterview() {
           >
             {generating ? '生成中...' : '✨ 生成故事'}
           </button>
+          {storyDraft && (
+            <>
+              <button
+                onClick={handleExportWord}
+                style={{
+                  padding: '6px 12px',
+                  background: 'var(--primary)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                📄 导出Word
+              </button>
+              <button
+                onClick={handleExportPDF}
+                style={{
+                  padding: '6px 12px',
+                  background: '#dc2626',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                📕 导出PDF
+              </button>
+            </>
+          )}
+          </div>
         </div>
         
         <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
