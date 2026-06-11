@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { MemoirSDK, Friend } from '../utils/sdk'
+import FamilyTree from './FamilyTree'
 
 const STORAGE_KEY_FRIENDS = 'memoir_friends'
 
@@ -10,9 +11,9 @@ function getSDK(): MemoirSDK {
 }
 
 const TABS: { key: FriendCategory; label: string; icon: string }[] = [
-  { key: 'family', label: '家族树', icon: '🌳' },
-  { key: 'classmate', label: '同学录', icon: '🎓' },
-  { key: 'friend', label: '朋友圈', icon: '👥' },
+  { key: 'family', label: '家族树', icon: '' },
+  { key: 'classmate', label: '同学录', icon: '' },
+  { key: 'friend', label: '朋友圈', icon: '' },
 ]
 
 export default function Friends() {
@@ -119,7 +120,7 @@ export default function Friends() {
     <div>
       {/* 标题栏 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 700 }}>👥 亲友管理</h2>
+        <h2 style={{ fontSize: 22, fontWeight: 700 }}> 亲友管理</h2>
         <button
           onClick={() => { setForm(f => ({ ...f, category: activeTab })); setShowAdd(true) }}
           style={{ padding: '8px 20px', background: 'var(--primary)', color: '#fff', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
@@ -153,7 +154,7 @@ export default function Friends() {
       {filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 64, background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)' }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>
-            {activeTab === 'family' ? '🌳' : activeTab === 'classmate' ? '🎓' : '👥'}
+            {activeTab === 'family' ? '' : activeTab === 'classmate' ? '' : ''}
           </div>
           <div style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 16 }}>
             {activeTab === 'family' ? '还没有家族成员，点击添加' : activeTab === 'classmate' ? '还没有同学记录' : '还没有朋友记录'}
@@ -165,13 +166,9 @@ export default function Friends() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* 家族树：列表 */}
+          {/* 家族树：可视化树状图 */}
           {activeTab === 'family' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
-              {filtered.map(f => (
-                <FriendCard key={f.id} friend={f} onDelete={handleDelete} formatTime={formatTime} />
-              ))}
-            </div>
+            <FamilyTree friends={filtered} onDelete={handleDelete} />
           )}
 
           {/* 同学录：按学校分组 */}
@@ -246,6 +243,16 @@ export default function Friends() {
                     <input type="number" placeholder="0=自己，-1=父母辈，+1=子女辈" value={form.generation} onChange={e => setForm(f => ({ ...f, generation: e.target.value }))}
                       style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14 }} />
                   </div>
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 500, display: 'block', marginBottom: 4 }}>父节点（可选）</label>
+                    <select value={form.parentId} onChange={e => setForm(f => ({ ...f, parentId: e.target.value }))}
+                      style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, background: '#fff' }}>
+                      <option value="">-- 无（作为根节点）--</option>
+                      {friends.filter(f => f.category === 'family').map(f => (
+                        <option key={f.id} value={f.id}>{f.name}（{f.relationship || '未设置关系'}）</option>
+                      ))}
+                    </select>
+                  </div>
                 </>
               )}
 
@@ -314,7 +321,7 @@ function FriendCard({ friend, onDelete, formatTime }: { friend: Friend; onDelete
       onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}
     >
       {/* 头像 */}
-      <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18, flexShrink: 0 }}>
+      <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg, #b8860b, #a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18, flexShrink: 0 }}>
         {friend.avatar ? <img src={friend.avatar} alt={friend.name} style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover' }} /> : friend.name.charAt(0).toUpperCase()}
       </div>
 

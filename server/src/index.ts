@@ -15,17 +15,18 @@
  *   JWT_SECRET / BACKEND_PORT
  *   WECHAT_APP_ID / WECHAT_APP_SECRET / QQ_APP_ID / QQ_APP_KEY
  */
-import express from 'express'
+import express, { Request, Response, NextFunction } from 'express'
 import cors from 'cors'
 import { config } from 'dotenv'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 // 加载根目录的 .env
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 config({ path: path.resolve(__dirname, '../../.env') })
 
-import authRoutes from './routes/auth.js'
+import authRoutes, { authMiddleware } from './routes/auth.js'
 import ossRoutes from './routes/oss.js'
 import memoirRoutes from './routes/memoir.js'
 import aiRoutes from './routes/ai.js'
@@ -33,8 +34,35 @@ import aiRoutes from './routes/ai.js'
 const app = express()
 const PORT = process.env.BACKEND_PORT ? parseInt(process.env.BACKEND_PORT) : 3002
 
+// ============ 环境变量验证 ============
+function validateEnv() {
+  const required = ['JWT_SECRET']
+  const missing = required.filter(key => !process.env[key])
+  if (missing.length > 0) {
+    console.error(`❌ 缺少必需的环境变量: ${missing.join(', ')}`)
+    console.error('请在 .env 文件中配置这些变量，然后重启服务。')
+    process.exit(1)
+  }
+}
+validateEnv()
+
+// ============ 请求日志中间件 ============
+function requestLogger(req: Request, _res: Response, next: NextFunction) {
+  const start = Date.now()
+  const { method, originalUrl } = req
+  // 在响应完成时记录日志
+  _res.on('finish', () => {
+    const duration = Date.now() - start
+    const status = _res.statusCode
+    const statusIcon = status >= 500 ? '❌' : status >= 400 ? '⚠️' : status >= 300 ? '↪️' : '✅'
+    console.log(`[${new Date().toLocaleTimeString('zh-CN')}] ${statusIcon} ${method} ${originalUrl} ${status} ${duration}ms`)
+  })
+  next()
+}
+
 // ============ 中间件 ============
 app.use(cors())
+app.use(requestLogger)
 app.use(express.json({ limit: '50mb' }))
 
 // ============ 路由注册 ============
@@ -43,19 +71,19 @@ app.get('/health', (_req, res) => {
 })
 
 app.use('/auth', authRoutes)
-app.use('/oss', ossRoutes)
-app.use('/memoir', memoirRoutes)
-app.use('/ai', aiRoutes)
+app.use('/oss', authMiddleware, ossRoutes)
+app.use('/memoir', authMiddleware, memoirRoutes)
+app.use('/ai', authMiddleware, aiRoutes)
 
 // ============ 电信能力平台 Token 交换 ============
 app.post('/telecom/token', async (req, res) => {
   try {
     const { code } = req.body
-    if (!code) return res.status(400).json({ error: 'missing code' })
+    if (!code) return res.status(400).json({ success: false, error: 'missing code' })
 
     const appId = process.env.TELECOM_APP_ID
     const appSecret = process.env.TELECOM_APP_SECRET
-    if (!appId || !appSecret) return res.status(500).json({ error: '电信平台配置缺失' })
+    if (!appId || !appSecret) return res.status(500).json({ success: false, error: '电信平台配置缺失' })
 
     const tokenRes = await fetch('https://oauth.api.189.cn/token', {
       method: 'POST',
@@ -66,29 +94,32 @@ app.post('/telecom/token', async (req, res) => {
     res.status(tokenRes.status).json(data)
   } catch (err: any) {
     console.error('[telecom/token]', err.message)
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ success: false, error: err.message || 'Token 交换失败' })
   }
 })
 
 // ============ 404 ============
 app.use((_req, res) => {
-  res.status(404).json({ error: '接口不存在' })
+  res.status(404).json({ success: false, error: '接口不存在', path: _req.path })
 })
 
 // ============ 全局错误处理 ============
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('[Error]', err)
-  res.status(500).json({ error: '服务器内部错误' })
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('[Global Error]', err.message, err.stack)
+  const status = err.status || 500
+  const message = status >= 500 ? '服务器内部错误' : (err.message || '请求处理失败')
+  res.status(status).json({ success: false, error: message, ...(err.details && { details: err.details }) })
 })
 
 // ============ 启动 ============
 app.listen(PORT, () => {
   console.log('')
   console.log(`  ✅  忆往昔后端服务已启动：http://localhost:${PORT}`)
-  console.log(`  📋  Health:    http://localhost:${PORT}/health`)
+  console.log(`  🩺  Health:    http://localhost:${PORT}/health`)
   console.log(`  🔐  Auth:      http://localhost:${PORT}/auth/*`)
   console.log(`  📦  OSS:       http://localhost:${PORT}/oss/*`)
   console.log(`  📝  Memoir:    http://localhost:${PORT}/memoir/*`)
+  console.log(`  🤖  AI:        http://localhost:${PORT}/ai/*`)
   console.log(`  📞  Telecom:   http://localhost:${PORT}/telecom/token`)
   console.log('')
 })
