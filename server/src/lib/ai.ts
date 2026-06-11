@@ -125,6 +125,27 @@ const SYSTEM_PROMPT = `你是一位温柔、耐心、善于倾听的回忆录引
 
 现在，请根据对话历史，给出你的下一句回复。`
 
+// ============ 故事生成系统提示词 ============
+
+const STORY_SYSTEM_PROMPT = `你是一位专业的回忆录作家。你的任务是根据用户提供的访谈记录，整理并撰写一篇连贯、感人、结构清晰的回忆录。
+
+## 你的写作风格
+- 用第一人称叙述（"我"），因为这是对用户人生的回忆
+- 语言温暖、真诚、有画面感，避免空洞的形容词
+- 按照时间顺序或主题逻辑组织内容
+- 保留用户原话中的细节和情感，不要过度润色
+- 适当补充过渡句，让故事流畅自然
+- 使用markdown格式，包含标题、段落、重点标注
+
+## 输出格式
+输出一篇完整的markdown格式的回忆录，包含：
+1. 标题（# 我的回忆录）
+2. 引言（简短开场）
+3. 正文（按主题或时间分章节）
+4. 结语（如有必要）
+
+现在，请根据用户提供的访谈记录，撰写这篇回忆录。`
+
 // ============ 免费 API 调用（优先）================
 
 /**
@@ -164,7 +185,7 @@ async function callGitHubModels(
     throw new Error(`GitHub Models: ${response.status} ${err}`)
   }
 
-  const data = await response.json()
+  const data: any = await response.json()
   return data.choices?.[0]?.message?.content || '嗯，我在听，你继续说。'
 }
 
@@ -194,9 +215,111 @@ async function callHuggingFace(
     throw new Error(`HuggingFace: ${response.status} ${err}`)
   }
 
-  const data = await response.json()
+  const data: any = await response.json()
   const reply = Array.isArray(data) ? data[0]?.generated_text : data.generated_text
   return reply || '嗯，我在听。'
+}
+
+// ============ 故事生成 API 调用 ============
+
+/**
+ * 调用 GitHub Models 生成故事
+ */
+async function generateStoryGitHubModels(messages: ChatMessage[]): Promise<string> {
+  const token = process.env.GITHUB_TOKEN
+  if (!token) throw new Error('GITHUB_TOKEN not set')
+
+  const userContent = messages
+    .filter(m => m.role === 'user')
+    .map((m, i) => `## 访谈片段 ${i + 1}\n${m.content}`)
+    .join('\n\n')
+
+  const response = await fetch('https://models.inference.ai.azure.com/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'x-ms-model': 'gpt-4o-mini',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: STORY_SYSTEM_PROMPT },
+        { role: 'user', content: `以下是用户的访谈记录，请根据这些内容撰写回忆录：\n\n${userContent}` }
+      ],
+      temperature: 0.7,
+      max_tokens: 2000,
+    }),
+    signal: AbortSignal.timeout(30000),
+  })
+
+  if (!response.ok) {
+    const err = await response.text()
+    throw new Error(`GitHub Models: ${response.status} ${err}`)
+  }
+
+  const data: any = await response.json()
+  return data.choices?.[0]?.message?.content || ''
+}
+
+/**
+ * 调用 HuggingFace 生成故事
+ */
+async function generateStoryHuggingFace(messages: ChatMessage[]): Promise<string> {
+  const userContent = messages
+    .filter(m => m.role === 'user')
+    .map((m, i) => `访谈片段 ${i + 1}: ${m.content}`)
+    .join('\n\n')
+
+  const response = await fetch('https://api-inference.huggingface.co/models/Qwen/Qwen2.5-7B-Instruct', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      inputs: `[INST] ${STORY_SYSTEM_PROMPT}\n\n用户访谈记录：\n${userContent}\n\n请撰写回忆录。 [/INST]`,
+      parameters: { max_new_tokens: 1500, temperature: 0.7 },
+    }),
+    signal: AbortSignal.timeout(40000),
+  })
+
+  if (!response.ok) {
+    const err = await response.text()
+    throw new Error(`HuggingFace: ${response.status} ${err}`)
+  }
+
+  const data: any = await response.json()
+  const reply = Array.isArray(data) ? data[0]?.generated_text : data.generated_text
+  return reply || ''
+}
+
+/**
+ * Mock故事生成（降级方案）
+ */
+function generateMockStory(messages: ChatMessage[]): string {
+  const userMessages = messages.filter(m => m.role === 'user').map(m => m.content)
+  let story = `# 我的回忆录\n\n`
+  story += `> 这是根据您的访谈记录自动整理的回忆录草稿，AI正在学习中...\n\n`
+  
+  // 按维度分组
+  let currentDimension = ''
+  messages.forEach((msg, i) => {
+    if (msg.role === 'user') {
+      story += `## ${currentDimension || '访谈记录'}\n\n`
+      story += `${msg.content}\n\n`
+    } else if (msg.role === 'assistant') {
+      // 尝试从assistant消息中提取维度信息
+      if (msg.content.includes('童年')) currentDimension = '童年时光'
+      else if (msg.content.includes('青春')) currentDimension = '青春岁月'
+      else if (msg.content.includes('职场')) currentDimension = '职场经历'
+      else if (msg.content.includes('朋友')) currentDimension = '重要朋友'
+      else if (msg.content.includes('亲人') || msg.content.includes('父母')) currentDimension = '亲人故事'
+      else if (msg.content.includes('人生') || msg.content.includes('感慨')) currentDimension = '人生感悟'
+    }
+  })
+  
+  story += `\n---\n\n*注：此为自动生成的草稿，建议人工润色后使用。*\n`
+  return story
 }
 
 // ============ 智能 Mock（最终降级）================
@@ -295,15 +418,36 @@ export async function chat(
 
 /**
  * 根据访谈记录生成故事脉络
+ * 优先级：GitHub Models → HuggingFace → Mock
  */
 export async function generateStory(messages: ChatMessage[]): Promise<string> {
-  const userMessages = messages.filter(m => m.role === 'user').map(m => m.content)
-  let story = `# 我的回忆录\n\n`
-  story += `## 访谈记录\n\n`
-  userMessages.forEach((msg, i) => {
-    story += `### 片段 ${i + 1}\n${msg}\n\n`
-  })
-  story += `## 故事脉络（AI 整理中...）\n\n`
-  story += `正在根据您的口述内容，整理成连贯的故事...\n\n`
-  return story
+  // 尝试顺序：GitHub Models → HuggingFace → Mock
+  const providers = [
+    { name: 'GitHub Models', fn: generateStoryGitHubModels },
+    { name: 'HuggingFace', fn: generateStoryHuggingFace },
+  ]
+
+  for (const provider of providers) {
+    try {
+      const story = await provider.fn(messages)
+      if (story) {
+        console.log(`[AI] 使用 ${provider.name} 生成故事成功`)
+        return story
+      }
+    } catch (err: any) {
+      console.warn(`[AI] ${provider.name} 故事生成失败:`, err.message)
+      // 继续尝试下一个
+    }
+  }
+
+  // 全部失败，使用 Mock
+  console.log('[AI] 所有 API 失败，使用 Mock 模式生成故事')
+  return generateMockStory(messages)
+}
+
+/**
+ * 获取引导维度列表
+ */
+export function getDimensions(): InterviewDimension[] {
+  return INTERVIEW_DIMENSIONS
 }
