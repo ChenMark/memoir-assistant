@@ -133,23 +133,28 @@ export default function AIInterview() {
   }
 
   // =========== 保存草稿 ===========
-  const handleSaveDraft = () => {
-    // TODO: 调用后端 API 保存草稿
-    const draft = {
-      id: `draft_${Date.now()}`,
-      title: `AI访谈 - ${dimensions.find(d => d.id === currentDimension)?.name || '未命名'}`,
-      content: storyDraft || messages.map(m => `${m.role}: ${m.content}`).join('\n\n'),
-      tags: ['AI访谈', currentDimension],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+  const handleSaveDraft = async () => {
+    try {
+      const token = localStorage.getItem('memoir_auth_token')
+      const response = await fetch('/api/memoir/draft', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          title: `AI访谈 - ${dimensions.find(d => d.id === currentDimension)?.name || '未命名'}`,
+          content: storyDraft || messages.map(m => `${m.role}: ${m.content}`).join('\n\n'),
+          tags: ['AI访谈', currentDimension],
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || '保存失败')
+      alert('草稿已保存！')
+      navigate('/drafts')
+    } catch (err: any) {
+      alert(`保存草稿失败：${err.message}`)
     }
-    
-    const drafts = JSON.parse(localStorage.getItem('memoir_drafts') || '[]')
-    drafts.push(draft)
-    localStorage.setItem('memoir_drafts', JSON.stringify(drafts))
-    
-    alert('草稿已保存到本地！')
-    navigate('/drafts')
   }
 
   // =========== 渲染 ===========
