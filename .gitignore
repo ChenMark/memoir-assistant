@@ -6,6 +6,7 @@ server/dist/
 server/data/
 server/dev.db
 server/.env
+server/.env.migrate
 server/prisma/dev.db
 *.log
 .DS_Store
