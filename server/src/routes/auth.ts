@@ -2,6 +2,7 @@
  * 认证路由 — 注册 / 登录 / Token 验证 / 短信 / 第三方登录
  */
 import { Router, Request, Response } from 'express'
+import rateLimit from 'express-rate-limit'
 import {
   findUserByEmail, findUserByUsername, findUserByPhone, findUserById,
   createUser, createUserByPhone, getOrCreateWechatUser, getOrCreateQQUser,
@@ -10,6 +11,15 @@ import {
 } from '../lib/auth.js'
 
 const router = Router()
+
+// ============ 登录限流：15分钟内最多5次尝试 ============
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { success: false, error: '登录尝试次数过多，请15分钟后再试' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
 
 // ============ 中间件：Bearer Token 验证 ============
 export function authMiddleware(req: Request, res: Response, next: Function) {
@@ -71,7 +81,7 @@ router.post('/register', async (req: Request, res: Response) => {
 })
 
 // ============ POST /auth/login ============
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', loginLimiter, async (req: Request, res: Response) => {
   try {
     const { account, email, password } = req.body || {}
     const loginAccount = account || email

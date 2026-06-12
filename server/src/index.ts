@@ -17,6 +17,7 @@
  */
 import express, { Request, Response, NextFunction } from 'express'
 import cors from 'cors'
+import rateLimit from 'express-rate-limit'
 import { config } from 'dotenv'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -61,9 +62,38 @@ function requestLogger(req: Request, _res: Response, next: NextFunction) {
 }
 
 // ============ 中间件 ============
-app.use(cors())
+// CORS 白名单配置
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:8080'
+]
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // 允许无 origin 的请求（同源请求、移动端、Postman 等）
+    if (!origin) return callback(null, true)
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true)
+    
+    console.warn(`[CORS] 拒绝来源: ${origin}`)
+    callback(new Error('CORS policy: origin not allowed'))
+  },
+  credentials: true,
+  maxAge: 86400, // 24小时预检缓存
+}))
+
+// 全局限流：15分钟内最多100次请求
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { success: false, error: '请求过于频繁，请15分钟后再试' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
 app.use(requestLogger)
 app.use(express.json({ limit: '50mb' }))
+app.use(globalLimiter)
 
 // ============ 路由注册 ============
 app.get('/health', (_req, res) => {

@@ -108,7 +108,12 @@ export async function sendSMS(phone: string, code: string): Promise<boolean> {
 }
 
 // ============ JWT ============
-const JWT_SECRET = process.env.JWT_SECRET || 'memoir-jwt-secret-change-in-production'
+const JWT_SECRET = process.env.JWT_SECRET
+if (!JWT_SECRET) {
+  console.error('❌ FATAL: JWT_SECRET environment variable is required but not set.')
+  console.error('请在 .env 文件中配置 JWT_SECRET，然后重启服务。')
+  process.exit(1)
+}
 const TOKEN_EXPIRY = 7 * 24 * 60 * 60 * 1000
 
 function b64urlEncode(data: string): string {
@@ -126,7 +131,7 @@ export function generateToken(user: User): string {
   const payload: JWTPayload = { sub: user.id, username: user.username, email: user.email, iat: now, exp: now + TOKEN_EXPIRY }
   const hb = b64urlEncode(JSON.stringify(header))
   const pb = b64urlEncode(JSON.stringify(payload))
-  const sig = crypto.createHmac('sha256', JWT_SECRET).update(`${hb}.${pb}`).digest('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+  const sig = crypto.createHmac('sha256', JWT_SECRET!).update(`${hb}.${pb}`).digest('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
   return `${hb}.${pb}.${sig}`
 }
 
@@ -134,7 +139,7 @@ export function verifyToken(token: string): JWTPayload | null {
   try {
     const [hb, pb, sig] = token.split('.')
     if (!hb || !pb || !sig) return null
-    const expected = crypto.createHmac('sha256', JWT_SECRET).update(`${hb}.${pb}`).digest('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+    const expected = crypto.createHmac('sha256', JWT_SECRET!).update(`${hb}.${pb}`).digest('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
     if (sig !== expected) return null
     const payload: JWTPayload = JSON.parse(b64urlDecode(pb))
     if (payload.exp < Date.now()) return null
