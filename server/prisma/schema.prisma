@@ -1,0 +1,104 @@
+// Prisma Schema for memoir-assistant
+// Database: SQLite (development), PostgreSQL (production)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============ User ============
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  username       String   @unique
+  passwordHash   String
+  salt           String
+  phone          String?  @unique
+  phoneVerified  Boolean  @default(false)
+  avatar         String?
+  bio            String?
+  wechatOpenId   String?
+  wechatUnionId  String?
+  wechatNickname String?
+  qqOpenId       String?
+  qqNickname    String?
+  
+  // Relations
+  memoirs        Memoir[]
+  drafts         Draft[]
+  galleries      Gallery[]
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("users")
+}
+
+// ============ Memoir ============
+model Memoir {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  content     String
+  tags        String   // JSON array string
+  mood        String?
+  location    String?
+  date        String   // YYYY-MM-DD
+  media       String   // JSON array string (OSS keys)
+  isPublished Boolean  @default(false)
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  galleries   Gallery[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@map("memoirs")
+}
+
+// ============ Draft ============
+model Draft {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  content     String
+  tags        String   // JSON array string
+  mood        String?
+  date        String?  // YYYY-MM-DD
+  media       String   // JSON array string (OSS keys)
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@map("drafts")
+}
+
+// ============ Gallery ============
+model Gallery {
+  id          String   @id @default(cuid())
+  userId      String
+  memoirId    String?
+  ossKey      String
+  caption     String   @default("")
+  tags        String   // JSON array string
+  date        String   // YYYY-MM-DD
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  memoir      Memoir?  @relation(fields: [memoirId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@map("galleries")
+}

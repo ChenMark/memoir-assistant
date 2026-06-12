@@ -1,8 +1,8 @@
 /**
- * 认证工具库 — 密码哈希 / JWT / 短信验证码 / 用户 CRUD（直接 OSS SDK）
+ * 认证工具库 — 密码哈希 / JWT / 短信验证码 / 用户 CRUD（Prisma）
  */
 import crypto from 'node:crypto'
-import { readJSON, writeJSON } from './oss.js'
+import { prisma } from './prisma.js'
 
 // ============ 类型定义 ============
 export interface User {
@@ -22,11 +22,6 @@ export interface User {
   wechatNickname?: string
   qqOpenId?: string
   qqNickname?: string
-}
-
-export interface UsersDB {
-  users: User[]
-  version: number
 }
 
 export interface JWTPayload {
@@ -147,93 +142,91 @@ export function verifyToken(token: string): JWTPayload | null {
   } catch { return null }
 }
 
-// ============ 用户存储（直接 OSS SDK）============
-const USERS_KEY = 'memoir/users/users.json'
-let cachedUsers: UsersDB | null = null
-let cacheTime = 0
-const CACHE_TTL = 30 * 1000
+// ============ 用户存储（Prisma）============
 
-async function loadUsers(force = false): Promise<UsersDB> {
-  if (!force && cachedUsers && Date.now() - cacheTime < CACHE_TTL) return cachedUsers
-  const db = await readJSON<UsersDB>(USERS_KEY)
-  const result = db || { users: [], version: 1 }
-  cachedUsers = result
-  cacheTime = Date.now()
-  return result
-}
-
-async function saveUsers(db: UsersDB): Promise<void> {
-  cachedUsers = db
-  cacheTime = Date.now()
-  await writeJSON(USERS_KEY, db)
+function toUser(prismaUser: any): User {
+  return {
+    id: prismaUser.id,
+    username: prismaUser.username,
+    email: prismaUser.email,
+    phone: prismaUser.phone || undefined,
+    phoneVerified: prismaUser.phoneVerified || false,
+    passwordHash: prismaUser.passwordHash,
+    salt: prismaUser.salt,
+    createdAt: prismaUser.createdAt.toISOString(),
+    updatedAt: prismaUser.updatedAt.toISOString(),
+    avatar: prismaUser.avatar || undefined,
+    bio: prismaUser.bio || undefined,
+    wechatOpenId: prismaUser.wechatOpenId || undefined,
+    wechatUnionId: prismaUser.wechatUnionId || undefined,
+    wechatNickname: prismaUser.wechatNickname || undefined,
+    qqOpenId: prismaUser.qqOpenId || undefined,
+    qqNickname: prismaUser.qqNickname || undefined,
+  }
 }
 
 export async function findUserByEmail(email: string): Promise<User | null> {
-  const db = await loadUsers()
-  return db.users.find(u => u.email.toLowerCase() === email.toLowerCase()) || null
+  const user = await prisma.user.findFirst({ where: { email: email.toLowerCase() } })
+  return user ? toUser(user) : null
 }
 
 export async function findUserByUsername(username: string): Promise<User | null> {
-  const db = await loadUsers()
-  return db.users.find(u => u.username.toLowerCase() === username.toLowerCase()) || null
+  const user = await prisma.user.findFirst({ where: { username: username.toLowerCase() } })
+  return user ? toUser(user) : null
 }
 
 export async function findUserByPhone(phone: string): Promise<User | null> {
-  const db = await loadUsers()
-  return db.users.find(u => u.phone === phone) || null
+  const user = await prisma.user.findFirst({ where: { phone } })
+  return user ? toUser(user) : null
 }
 
 export async function findUserById(id: string): Promise<User | null> {
-  const db = await loadUsers()
-  return db.users.find(u => u.id === id) || null
+  const user = await prisma.user.findUnique({ where: { id } })
+  return user ? toUser(user) : null
 }
 
 export async function findUserByWechatOpenId(openId: string): Promise<User | null> {
-  const db = await loadUsers()
-  return db.users.find(u => u.wechatOpenId === openId) || null
+  const user = await prisma.user.findFirst({ where: { wechatOpenId: openId } })
+  return user ? toUser(user) : null
 }
 
 export async function findUserByQQOpenId(openId: string): Promise<User | null> {
-  const db = await loadUsers()
-  return db.users.find(u => u.qqOpenId === openId) || null
+  const user = await prisma.user.findFirst({ where: { qqOpenId: openId } })
+  return user ? toUser(user) : null
 }
 
 export async function createUser(data: {
   username: string; email: string; password: string; phone?: string; phoneVerified?: boolean
 }): Promise<User> {
-  const db = await loadUsers(true)
   const { hash, salt } = hashPassword(data.password)
-  const now = new Date().toISOString()
-  const user: User = {
-    id: `user_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`,
-    username: data.username.trim(),
-    email: data.email.toLowerCase().trim(),
-    phone: data.phone,
-    phoneVerified: data.phoneVerified || false,
-    passwordHash: hash,
-    salt,
-    createdAt: now,
-    updatedAt: now,
-  }
-  db.users.push(user)
-  await saveUsers(db)
-  return user
+  const user = await prisma.user.create({
+    data: {
+      username: data.username.trim(),
+      email: data.email.toLowerCase().trim(),
+      passwordHash: hash,
+      salt,
+      phone: data.phone,
+      phoneVerified: data.phoneVerified || false,
+    }
+  })
+  return toUser(user)
 }
 
 export async function createUserByPhone(data: { phone: string; username?: string }): Promise<User> {
-  const db = await loadUsers(true)
   const autoUsername = data.username || `用户${data.phone.slice(-4)}`
   const autoEmail = `${data.phone}@phone.memoir.local`
   const { hash, salt } = hashPassword(crypto.randomBytes(16).toString('hex'))
-  const now = new Date().toISOString()
-  const user: User = {
-    id: `user_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`,
-    username: autoUsername, email: autoEmail, phone: data.phone, phoneVerified: true,
-    passwordHash: hash, salt, createdAt: now, updatedAt: now,
-  }
-  db.users.push(user)
-  await saveUsers(db)
-  return user
+  const user = await prisma.user.create({
+    data: {
+      username: autoUsername,
+      email: autoEmail,
+      passwordHash: hash,
+      salt,
+      phone: data.phone,
+      phoneVerified: true,
+    }
+  })
+  return toUser(user)
 }
 
 export async function getOrCreateWechatUser(info: {
@@ -241,19 +234,22 @@ export async function getOrCreateWechatUser(info: {
 }): Promise<User> {
   const existing = await findUserByWechatOpenId(info.openId)
   if (existing) return existing
-  const db = await loadUsers(true)
+  
   const autoEmail = `wx_${info.openId.slice(0, 12)}@wechat.memoir.local`
   const { hash, salt } = hashPassword(crypto.randomBytes(16).toString('hex'))
-  const now = new Date().toISOString()
-  const user: User = {
-    id: `user_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`,
-    username: info.nickname || '微信用户', email: autoEmail, passwordHash: hash, salt,
-    wechatOpenId: info.openId, wechatUnionId: info.unionId, wechatNickname: info.nickname,
-    avatar: info.avatar, createdAt: now, updatedAt: now,
-  }
-  db.users.push(user)
-  await saveUsers(db)
-  return user
+  const user = await prisma.user.create({
+    data: {
+      username: info.nickname || '微信用户',
+      email: autoEmail,
+      passwordHash: hash,
+      salt,
+      wechatOpenId: info.openId,
+      wechatUnionId: info.unionId,
+      wechatNickname: info.nickname,
+      avatar: info.avatar,
+    }
+  })
+  return toUser(user)
 }
 
 export async function getOrCreateQQUser(info: {
@@ -261,19 +257,21 @@ export async function getOrCreateQQUser(info: {
 }): Promise<User> {
   const existing = await findUserByQQOpenId(info.openId)
   if (existing) return existing
-  const db = await loadUsers(true)
+  
   const autoEmail = `qq_${info.openId.slice(0, 12)}@qq.memoir.local`
   const { hash, salt } = hashPassword(crypto.randomBytes(16).toString('hex'))
-  const now = new Date().toISOString()
-  const user: User = {
-    id: `user_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`,
-    username: info.nickname || 'QQ用户', email: autoEmail, passwordHash: hash, salt,
-    qqOpenId: info.openId, qqNickname: info.nickname,
-    avatar: info.avatar, createdAt: now, updatedAt: now,
-  }
-  db.users.push(user)
-  await saveUsers(db)
-  return user
+  const user = await prisma.user.create({
+    data: {
+      username: info.nickname || 'QQ用户',
+      email: autoEmail,
+      passwordHash: hash,
+      salt,
+      qqOpenId: info.openId,
+      qqNickname: info.nickname,
+      avatar: info.avatar,
+    }
+  })
+  return toUser(user)
 }
 
 export async function updateUser(userId: string, updates: Partial<Pick<User,
@@ -281,12 +279,29 @@ export async function updateUser(userId: string, updates: Partial<Pick<User,
   'phone' | 'phoneVerified' | 'wechatOpenId' | 'wechatUnionId' |
   'wechatNickname' | 'qqOpenId' | 'qqNickname'>
 >): Promise<User | null> {
-  const db = await loadUsers(true)
-  const idx = db.users.findIndex(u => u.id === userId)
-  if (idx === -1) return null
-  db.users[idx] = { ...db.users[idx], ...updates, updatedAt: new Date().toISOString() }
-  await saveUsers(db)
-  return db.users[idx]
+  try {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(updates.username !== undefined && { username: updates.username }),
+        ...(updates.avatar !== undefined && { avatar: updates.avatar }),
+        ...(updates.bio !== undefined && { bio: updates.bio }),
+        ...(updates.passwordHash !== undefined && { passwordHash: updates.passwordHash }),
+        ...(updates.salt !== undefined && { salt: updates.salt }),
+        ...(updates.phone !== undefined && { phone: updates.phone }),
+        ...(updates.phoneVerified !== undefined && { phoneVerified: updates.phoneVerified }),
+        ...(updates.wechatOpenId !== undefined && { wechatOpenId: updates.wechatOpenId }),
+        ...(updates.wechatUnionId !== undefined && { wechatUnionId: updates.wechatUnionId }),
+        ...(updates.wechatNickname !== undefined && { wechatNickname: updates.wechatNickname }),
+        ...(updates.qqOpenId !== undefined && { qqOpenId: updates.qqOpenId }),
+        ...(updates.qqNickname !== undefined && { qqNickname: updates.qqNickname }),
+      }
+    })
+    return toUser(user)
+  } catch (err: any) {
+    if (err.code === 'P2025') return null // Record not found
+    throw err
+  }
 }
 
 /** 脱敏：去除密码字段 */

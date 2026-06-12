@@ -20,11 +20,8 @@ import cors from 'cors'
 import rateLimit from 'express-rate-limit'
 import { config } from 'dotenv'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 // 加载根目录的 .env
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 config({ path: path.resolve(__dirname, '../../.env') })
 
 import authRoutes, { authMiddleware } from './routes/auth.js'

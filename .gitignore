@@ -4,6 +4,9 @@ dist/
 server/node_modules/
 server/dist/
 server/data/
+server/dev.db
+server/.env
+server/prisma/dev.db
 *.log
 .DS_Store
 .vercel

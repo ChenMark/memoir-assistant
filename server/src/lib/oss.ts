@@ -2,6 +2,7 @@
  * OSS 存储抽象层
  * 封装阿里云 OSS 的初始化和常用操作
  */
+// @ts-expect-error ali-oss 没有类型声明文件
 import OSS from 'ali-oss'
 
 let ossClient: OSS | null = null
@@ -137,7 +138,7 @@ export async function deleteObject(key: string): Promise<void> {
 export async function listObjects(prefix: string, maxKeys = 1000): Promise<string[]> {
   const client = getOSSClient()
   const result = await client.list({ prefix, 'max-keys': maxKeys }, {})
-  return (result.objects || []).map(obj => obj.name)
+  return (result.objects || []).map((obj: any) => obj.name)
 }
 
 /** 检查对象是否存在 */

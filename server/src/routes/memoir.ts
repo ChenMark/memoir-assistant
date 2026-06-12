@@ -1,17 +1,9 @@
 /**
- * 回忆录数据路由 — 回忆录 / 草稿 / 画廊的 CRUD
- *
- * OSS 目录结构（按用户隔离）：
- *   memoir/users/{userId}/
- *     memoirs/        — 正式回忆录 {id}.json
- *     drafts/         — 草稿 {id}.json
- *     gallery/        — 画廊图片 {id}.json (元数据)
- *     timeline/       — 时间线 {id}.json
- *     media/          — 媒体文件（图片/视频）
+ * 回忆录数据路由 — 回忆录 / 草稿 / 画廊的 CRUD（Prisma）
  */
 import { Router, Request, Response } from 'express'
 import { authMiddleware } from './auth.js'
-import { readJSON, writeJSON, listObjects, deleteObject, exists } from '../lib/oss.js'
+import { prisma } from '../lib/prisma.js'
 import crypto from 'node:crypto'
 
 const router = Router()
@@ -31,7 +23,7 @@ function nowISO(): string {
   return new Date().toISOString()
 }
 
-// ============ 回忆录 Memoir ============
+// ============ 回忆录 Memoir ===========
 
 interface Memoir {
   id: string
@@ -48,26 +40,29 @@ interface Memoir {
   updatedAt: string
 }
 
-function memoirKey(userId: string, id: string): string {
-  return `memoir/users/${userId}/memoirs/${id}.json`
-}
-
-function memoirPrefix(userId: string): string {
-  return `memoir/users/${userId}/memoirs/`
-}
-
 /** GET /memoir — 获取所有回忆录 */
 router.get('/', async (req: Request, res: Response) => {
   try {
     const uid = userId(req)
-    const keys = await listObjects(memoirPrefix(uid), 500)
-    const memoirs: Memoir[] = []
-    for (const key of keys) {
-      const m = await readJSON<Memoir>(key)
-      if (m) memoirs.push(m)
-    }
-    memoirs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    res.json({ memoirs })
+    const memoirs = await prisma.memoir.findMany({
+      where: { userId: uid },
+      orderBy: { date: 'desc' }
+    })
+    const result: Memoir[] = memoirs.map(m => ({
+      id: m.id,
+      userId: m.userId,
+      title: m.title,
+      content: m.content,
+      tags: JSON.parse(m.tags || '[]'),
+      mood: m.mood || undefined,
+      location: m.location || undefined,
+      date: m.date,
+      media: JSON.parse(m.media || '[]'),
+      isPublished: m.isPublished,
+      createdAt: m.createdAt.toISOString(),
+      updatedAt: m.updatedAt.toISOString(),
+    }))
+    res.json({ memoirs: result })
   } catch (err: any) {
     console.error('[memoir/]', err.message)
     res.status(500).json({ error: '获取回忆录失败' })
@@ -77,12 +72,28 @@ router.get('/', async (req: Request, res: Response) => {
 /** GET /memoir/:id — 获取单个回忆录 */
 router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const key = memoirKey(userId(req), req.params.id)
-    const memoir = await readJSON<Memoir>(key)
-    if (!memoir || memoir.userId !== userId(req)) {
+    const uid = userId(req)
+    const memoir = await prisma.memoir.findFirst({
+      where: { id: req.params.id, userId: uid }
+    })
+    if (!memoir) {
       return res.status(404).json({ error: '回忆录不存在' })
     }
-    res.json({ memoir })
+    const result: Memoir = {
+      id: memoir.id,
+      userId: memoir.userId,
+      title: memoir.title,
+      content: memoir.content,
+      tags: JSON.parse(memoir.tags || '[]'),
+      mood: memoir.mood || undefined,
+      location: memoir.location || undefined,
+      date: memoir.date,
+      media: JSON.parse(memoir.media || '[]'),
+      isPublished: memoir.isPublished,
+      createdAt: memoir.createdAt.toISOString(),
+      updatedAt: memoir.updatedAt.toISOString(),
+    }
+    res.json({ memoir: result })
   } catch (err: any) {
     console.error('[memoir/:id]', err.message)
     res.status(500).json({ error: '获取回忆录失败' })
@@ -96,23 +107,35 @@ router.post('/', async (req: Request, res: Response) => {
     const { title, content, date, tags, mood, location, media } = req.body || {}
     if (!title || !date) return res.status(400).json({ error: '标题和日期为必填项' })
 
-    const memoir: Memoir = {
-      id: genId(),
-      userId: uid,
-      title: title.trim(),
-      content: content || '',
-      tags: tags || [],
-      mood: mood || '',
-      location: location || '',
-      date,
-      media: media || [],
-      isPublished: true,
-      createdAt: nowISO(),
-      updatedAt: nowISO(),
+    const memoir = await prisma.memoir.create({
+      data: {
+        id: genId(),
+        userId: uid,
+        title: title.trim(),
+        content: content || '',
+        tags: JSON.stringify(tags || []),
+        mood: mood || null,
+        location: location || null,
+        date,
+        media: JSON.stringify(media || []),
+        isPublished: true,
+      }
+    })
+    const result: Memoir = {
+      id: memoir.id,
+      userId: memoir.userId,
+      title: memoir.title,
+      content: memoir.content,
+      tags: JSON.parse(memoir.tags || '[]'),
+      mood: memoir.mood || undefined,
+      location: memoir.location || undefined,
+      date: memoir.date,
+      media: JSON.parse(memoir.media || '[]'),
+      isPublished: memoir.isPublished,
+      createdAt: memoir.createdAt.toISOString(),
+      updatedAt: memoir.updatedAt.toISOString(),
     }
-
-    await writeJSON(memoirKey(uid, memoir.id), memoir)
-    res.status(201).json({ memoir })
+    res.status(201).json({ memoir: result })
   } catch (err: any) {
     console.error('[memoir POST]', err.message)
     res.status(500).json({ error: '创建回忆录失败' })
@@ -123,27 +146,43 @@ router.post('/', async (req: Request, res: Response) => {
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     const uid = userId(req)
-    const key = memoirKey(uid, req.params.id)
-    const existing = await readJSON<Memoir>(key)
-    if (!existing || existing.userId !== uid) {
+    const existing = await prisma.memoir.findFirst({
+      where: { id: req.params.id, userId: uid }
+    })
+    if (!existing) {
       return res.status(404).json({ error: '回忆录不存在' })
     }
 
     const { title, content, date, tags, mood, location, media, isPublished } = req.body || {}
-    const updated: Memoir = {
-      ...existing,
-      title: title !== undefined ? title.trim() : existing.title,
-      content: content !== undefined ? content : existing.content,
-      date: date !== undefined ? date : existing.date,
-      tags: tags !== undefined ? tags : existing.tags,
-      mood: mood !== undefined ? mood : existing.mood,
-      location: location !== undefined ? location : existing.location,
-      media: media !== undefined ? media : existing.media,
-      isPublished: isPublished !== undefined ? isPublished : existing.isPublished,
-      updatedAt: nowISO(),
+    const updated = await prisma.memoir.update({
+      where: { id: req.params.id },
+      data: {
+        title: title !== undefined ? title.trim() : existing.title,
+        content: content !== undefined ? content : existing.content,
+        date: date !== undefined ? date : existing.date,
+        tags: tags !== undefined ? JSON.stringify(tags) : existing.tags,
+        mood: mood !== undefined ? mood : existing.mood,
+        location: location !== undefined ? location : existing.location,
+        media: media !== undefined ? JSON.stringify(media) : existing.media,
+        isPublished: isPublished !== undefined ? isPublished : existing.isPublished,
+        updatedAt: new Date(),
+      }
+    })
+    const result: Memoir = {
+      id: updated.id,
+      userId: updated.userId,
+      title: updated.title,
+      content: updated.content,
+      tags: JSON.parse(updated.tags || '[]'),
+      mood: updated.mood || undefined,
+      location: updated.location || undefined,
+      date: updated.date,
+      media: JSON.parse(updated.media || '[]'),
+      isPublished: updated.isPublished,
+      createdAt: updated.createdAt.toISOString(),
+      updatedAt: updated.updatedAt.toISOString(),
     }
-    await writeJSON(key, updated)
-    res.json({ memoir: updated })
+    res.json({ memoir: result })
   } catch (err: any) {
     console.error('[memoir PUT]', err.message)
     res.status(500).json({ error: '更新回忆录失败' })
@@ -154,12 +193,13 @@ router.put('/:id', async (req: Request, res: Response) => {
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const uid = userId(req)
-    const key = memoirKey(uid, req.params.id)
-    const existing = await readJSON<Memoir>(key)
-    if (!existing || existing.userId !== uid) {
+    const existing = await prisma.memoir.findFirst({
+      where: { id: req.params.id, userId: uid }
+    })
+    if (!existing) {
       return res.status(404).json({ error: '回忆录不存在' })
     }
-    await deleteObject(key)
+    await prisma.memoir.delete({ where: { id: req.params.id } })
     res.json({ success: true })
   } catch (err: any) {
     console.error('[memoir DELETE]', err.message)
@@ -167,7 +207,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 })
 
-// ============ 草稿 Draft ============
+// ============ 草稿 Draft ===========
 
 interface Draft {
   id: string
@@ -182,26 +222,27 @@ interface Draft {
   updatedAt: string
 }
 
-function draftKey(userId: string, id: string): string {
-  return `memoir/users/${userId}/drafts/${id}.json`
-}
-
-function draftPrefix(userId: string): string {
-  return `memoir/users/${userId}/drafts/`
-}
-
 /** GET /draft — 获取所有草稿 */
 router.get('/draft', async (req: Request, res: Response) => {
   try {
     const uid = userId(req)
-    const keys = await listObjects(draftPrefix(uid), 500)
-    const drafts: Draft[] = []
-    for (const key of keys) {
-      const d = await readJSON<Draft>(key)
-      if (d) drafts.push(d)
-    }
-    drafts.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    res.json({ drafts })
+    const drafts = await prisma.draft.findMany({
+      where: { userId: uid },
+      orderBy: { updatedAt: 'desc' }
+    })
+    const result: Draft[] = drafts.map(d => ({
+      id: d.id,
+      userId: d.userId,
+      title: d.title,
+      content: d.content,
+      tags: JSON.parse(d.tags || '[]'),
+      mood: d.mood || undefined,
+      date: d.date || undefined,
+      media: JSON.parse(d.media || '[]'),
+      createdAt: d.createdAt.toISOString(),
+      updatedAt: d.updatedAt.toISOString(),
+    }))
+    res.json({ drafts: result })
   } catch (err: any) {
     console.error('[draft/]', err.message)
     res.status(500).json({ error: '获取草稿失败' })
@@ -215,40 +256,67 @@ router.post('/draft', async (req: Request, res: Response) => {
     const { id, title, content, tags, mood, date, media } = req.body || {}
     const now = nowISO()
 
-    let draft: Draft
     if (id) {
-      const key = draftKey(uid, id)
-      const existing = await readJSON<Draft>(key)
-      if (!existing || existing.userId !== uid) {
+      // 更新现有草稿
+      const existing = await prisma.draft.findFirst({
+        where: { id, userId: uid }
+      })
+      if (!existing) {
         return res.status(404).json({ error: '草稿不存在' })
       }
-      draft = {
-        ...existing,
-        title: title !== undefined ? title : existing.title,
-        content: content !== undefined ? content : existing.content,
-        tags: tags !== undefined ? tags : existing.tags,
-        mood: mood !== undefined ? mood : existing.mood,
-        date: date !== undefined ? date : existing.date,
-        media: media !== undefined ? media : existing.media,
-        updatedAt: now,
+      const updated = await prisma.draft.update({
+        where: { id },
+        data: {
+          title: title !== undefined ? title : existing.title,
+          content: content !== undefined ? content : existing.content,
+          tags: tags !== undefined ? JSON.stringify(tags) : existing.tags,
+          mood: mood !== undefined ? mood : existing.mood,
+          date: date !== undefined ? date : existing.date,
+          media: media !== undefined ? JSON.stringify(media) : existing.media,
+          updatedAt: new Date(),
+        }
+      })
+      const result: Draft = {
+        id: updated.id,
+        userId: updated.userId,
+        title: updated.title,
+        content: updated.content,
+        tags: JSON.parse(updated.tags || '[]'),
+        mood: updated.mood || undefined,
+        date: updated.date || undefined,
+        media: JSON.parse(updated.media || '[]'),
+        createdAt: updated.createdAt.toISOString(),
+        updatedAt: updated.updatedAt.toISOString(),
       }
+      res.json({ draft: result })
     } else {
-      draft = {
-        id: genId(),
-        userId: uid,
-        title: title || '未命名草稿',
-        content: content || '',
-        tags: tags || [],
-        mood,
-        date,
-        media: media || [],
-        createdAt: now,
-        updatedAt: now,
+      // 创建新草稿
+      const draft = await prisma.draft.create({
+        data: {
+          id: genId(),
+          userId: uid,
+          title: title || '未命名草稿',
+          content: content || '',
+          tags: JSON.stringify(tags || []),
+          mood: mood || null,
+          date: date || null,
+          media: JSON.stringify(media || []),
+        }
+      })
+      const result: Draft = {
+        id: draft.id,
+        userId: draft.userId,
+        title: draft.title,
+        content: draft.content,
+        tags: JSON.parse(draft.tags || '[]'),
+        mood: draft.mood || undefined,
+        date: draft.date || undefined,
+        media: JSON.parse(draft.media || '[]'),
+        createdAt: draft.createdAt.toISOString(),
+        updatedAt: draft.updatedAt.toISOString(),
       }
+      res.status(201).json({ draft: result })
     }
-
-    await writeJSON(draftKey(uid, draft.id), draft)
-    res.json({ draft })
   } catch (err: any) {
     console.error('[draft POST]', err.message)
     res.status(500).json({ error: '保存草稿失败' })
@@ -259,12 +327,13 @@ router.post('/draft', async (req: Request, res: Response) => {
 router.delete('/draft/:id', async (req: Request, res: Response) => {
   try {
     const uid = userId(req)
-    const key = draftKey(uid, req.params.id)
-    const existing = await readJSON<Draft>(key)
-    if (!existing || existing.userId !== uid) {
+    const existing = await prisma.draft.findFirst({
+      where: { id: req.params.id, userId: uid }
+    })
+    if (!existing) {
       return res.status(404).json({ error: '草稿不存在' })
     }
-    await deleteObject(key)
+    await prisma.draft.delete({ where: { id: req.params.id } })
     res.json({ success: true })
   } catch (err: any) {
     console.error('[draft DELETE]', err.message)
@@ -272,7 +341,7 @@ router.delete('/draft/:id', async (req: Request, res: Response) => {
   }
 })
 
-// ============ 画廊 Gallery（图片元数据）============
+// ============ 画廊 Gallery ===========
 
 interface GalleryItem {
   id: string
@@ -285,26 +354,25 @@ interface GalleryItem {
   createdAt: string
 }
 
-function galleryKey(userId: string, id: string): string {
-  return `memoir/users/${userId}/gallery/${id}.json`
-}
-
-function galleryPrefix(userId: string): string {
-  return `memoir/users/${userId}/gallery/`
-}
-
 /** GET /gallery — 获取画廊列表 */
 router.get('/gallery', async (req: Request, res: Response) => {
   try {
     const uid = userId(req)
-    const keys = await listObjects(galleryPrefix(uid), 500)
-    const items: GalleryItem[] = []
-    for (const key of keys) {
-      const item = await readJSON<GalleryItem>(key)
-      if (item) items.push(item)
-    }
-    items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    res.json({ gallery: items })
+    const items = await prisma.gallery.findMany({
+      where: { userId: uid },
+      orderBy: { date: 'desc' }
+    })
+    const result: GalleryItem[] = items.map(item => ({
+      id: item.id,
+      userId: item.userId,
+      memoirId: item.memoirId || undefined,
+      ossKey: item.ossKey,
+      caption: item.caption,
+      tags: JSON.parse(item.tags || '[]'),
+      date: item.date,
+      createdAt: item.createdAt.toISOString(),
+    }))
+    res.json({ gallery: result })
   } catch (err: any) {
     console.error('[gallery]', err.message)
     res.status(500).json({ error: '获取画廊失败' })
@@ -318,18 +386,28 @@ router.post('/gallery', async (req: Request, res: Response) => {
     const { ossKey, caption, tags, date, memoirId } = req.body || {}
     if (!ossKey || !date) return res.status(400).json({ error: '图片地址和日期为必填项' })
 
-    const item: GalleryItem = {
-      id: genId(),
-      userId: uid,
-      memoirId,
-      ossKey,
-      caption: caption || '',
-      tags: tags || [],
-      date,
-      createdAt: nowISO(),
+    const item = await prisma.gallery.create({
+      data: {
+        id: genId(),
+        userId: uid,
+        memoirId: memoirId || null,
+        ossKey,
+        caption: caption || '',
+        tags: JSON.stringify(tags || []),
+        date,
+      }
+    })
+    const result: GalleryItem = {
+      id: item.id,
+      userId: item.userId,
+      memoirId: item.memoirId || undefined,
+      ossKey: item.ossKey,
+      caption: item.caption,
+      tags: JSON.parse(item.tags || '[]'),
+      date: item.date,
+      createdAt: item.createdAt.toISOString(),
     }
-    await writeJSON(galleryKey(uid, item.id), item)
-    res.status(201).json({ item })
+    res.status(201).json({ item: result })
   } catch (err: any) {
     console.error('[gallery POST]', err.message)
     res.status(500).json({ error: '添加画廊失败' })
@@ -340,16 +418,17 @@ router.post('/gallery', async (req: Request, res: Response) => {
 router.delete('/gallery/:id', async (req: Request, res: Response) => {
   try {
     const uid = userId(req)
-    const key = galleryKey(uid, req.params.id)
-    const existing = await readJSON<GalleryItem>(key)
-    if (!existing || existing.userId !== uid) {
+    const existing = await prisma.gallery.findFirst({
+      where: { id: req.params.id, userId: uid }
+    })
+    if (!existing) {
       return res.status(404).json({ error: '图片不存在' })
     }
-    await deleteObject(key)
+    await prisma.gallery.delete({ where: { id: req.params.id } })
     res.json({ success: true })
   } catch (err: any) {
     console.error('[gallery DELETE]', err.message)
-    res.status(500).json({ error: '删除画廊图片失败' })
+    res.status(500).json({ error: '删除画廊失败' })
   }
 })
 
