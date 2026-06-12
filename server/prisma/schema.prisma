@@ -25,12 +25,13 @@ model User {
   wechatUnionId  String?
   wechatNickname String?
   qqOpenId       String?
-  qqNickname    String?
+  qqNickname     String?
   
   // Relations
   memoirs        Memoir[]
   drafts         Draft[]
   galleries      Gallery[]
+  friends        Friend[]
   
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -101,4 +102,33 @@ model Gallery {
 
   @@index([userId])
   @@map("galleries")
+}
+
+// ============ Friend ============
+model Friend {
+  id             String   @id @default(cuid())
+  userId         String
+  name           String
+  avatar         String?
+  addedAt        DateTime  @default(now())
+  category       String   // 'family' | 'class_mate' | 'friend'
+  relationship   String?  // 家族关系
+  generation     Int?      // 辈分
+  parentId       String?  // 父节点ID，用于家族树
+  spouseId       String?  // 配偶ID
+  school         String?  // 学校
+  classInfo      String?  // 班级信息
+  graduationYear String?  // 毕业年份
+  metAt          String?  // 认识地点
+  metYear        String?  // 认识年份
+  tags           String   // JSON array string，如工作单位、兴趣组等
+  
+  // Relations
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId])
+  @@map("friends")
 }
