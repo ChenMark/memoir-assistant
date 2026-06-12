@@ -1,6 +1,6 @@
 /**
  * 忆往昔回忆录助手 — 后端服务入口
- *
+ * 
  * 路由结构：
  *   /health           健康检查
  *   /auth/*           认证（注册/登录/短信/第三方）
@@ -9,7 +9,7 @@
  *   /memoir/draft/*   草稿管理
  *   /memoir/gallery/* 画廊管理
  *   /telecom/token    电信能力平台 Token 代理
- *
+ *   /friend/*         好友管理
  * 环境变量（从 ../.env 读取）：
  *   OSS_ACCESS_KEY_ID / OSS_ACCESS_KEY_SECRET / OSS_BUCKET / OSS_REGION
  *   JWT_SECRET / BACKEND_PORT
@@ -28,6 +28,7 @@ import authRoutes, { authMiddleware } from './routes/auth.js'
 import ossRoutes from './routes/oss.js'
 import memoirRoutes from './routes/memoir.js'
 import aiRoutes from './routes/ai.js'
+import friendRoutes from './routes/friend.js'
 
 const app = express()
 const PORT = process.env.BACKEND_PORT ? parseInt(process.env.BACKEND_PORT) : 3002
@@ -101,6 +102,7 @@ app.use('/auth', authRoutes)
 app.use('/oss', authMiddleware, ossRoutes)
 app.use('/memoir', authMiddleware, memoirRoutes)
 app.use('/ai', authMiddleware, aiRoutes)
+app.use('/friend', authMiddleware, friendRoutes)
 
 // ============ 电信能力平台 Token 交换 ============
 app.post('/telecom/token', async (req, res) => {
