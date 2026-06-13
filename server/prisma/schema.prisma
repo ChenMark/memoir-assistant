@@ -33,6 +33,7 @@ model User {
   galleries      Gallery[]
   friends        Friend[]
   comments       PhotoComment[]
+  hobbies        Hobby[]
   
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -151,4 +152,26 @@ model Friend {
 
   @@index([userId])
   @@map("friends")
+}
+
+// ============ Hobby ============
+model Hobby {
+  id          String   @id @default(cuid())
+  userId      String
+  category    String   // 'music' | 'movie' | 'sport' | 'custom'
+  title       String
+  description String   @default("")
+  rating      Int?    // 1-5星评分
+  tags        String   // JSON array string
+  year        String?  // 年份(金曲/电影)
+  link        String?  // 外部链接
+  imageKey    String?  // OSS图片key
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, category])
+  @@map("hobbies")
 }

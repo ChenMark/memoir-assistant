@@ -9,6 +9,7 @@ import Settings from './components/Settings'
 import Login from './components/Login'
 import UserManagement from './components/UserManagement'
 import AIInterview from './components/AIInterview'
+import Hobbies from './components/Hobbies'
 import { createSDK, MemoirSDK } from './utils/sdk'
 
 const sdk: MemoirSDK = createSDK({})
@@ -22,6 +23,16 @@ const navItems = [
   { path: '/drafts', label: '草稿', icon: '' },
   { path: '/gallery', label: '相册', icon: '🖼️' },
   { path: '/friends', label: '亲友', icon: '' },
+  {
+    label: '爱好', icon: '❤️',
+    children: [
+      { path: '/hobbies?tab=music', label: '金曲', icon: '🎵' },
+      { path: '/hobbies?tab=movie', label: '电影', icon: '🎬' },
+      { path: '/hobbies?tab=sport', label: '比赛', icon: '🏆' },
+      { path: '/hobbies?tab=custom', label: '自定义', icon: '✨' },
+    ],
+  },
+  { path: '/ai', label: 'AI访谈', icon: '🤖' },
   { path: '/settings', label: '设置', icon: '⚙️' },
 ]
 
@@ -50,6 +61,7 @@ function AppLayout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set())
 
   // 全局快捷键：Ctrl+S 保存当前草稿
   useLayoutEffect(() => {
@@ -135,25 +147,86 @@ function AppLayout() {
           </div>
         )}
 
-        <nav style={{ flex: 1, padding: '12px 8px' }}>
-          {navItems.map(item => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              onClick={closeSidebar}
-              style={({ isActive }) => ({
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '10px 16px', borderRadius: 'var(--radius)',
-                marginBottom: 4, fontSize: 14, fontWeight: isActive ? 600 : 400,
-                color: isActive ? 'var(--primary)' : 'var(--text)',
-                background: isActive ? 'rgba(99,102,241,0.08)' : 'transparent',
-                textDecoration: 'none', transition: 'all 0.15s',
-              })}
-            >
-              <span style={{ fontSize: 18 }}>{item.icon}</span>
-              {item.label}
-            </NavLink>
-          ))}
+        <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
+          {navItems.map(item => {
+            if ('children' in item && item.children) {
+              const isExpanded = expandedMenus.has(item.label)
+              return (
+                <div key={item.label}>
+                  <div
+                    onClick={() => {
+                      setExpandedMenus(prev => {
+                        const next = new Set(prev)
+                        if (next.has(item.label)) next.delete(item.label)
+                        else next.add(item.label)
+                        return next
+                      })
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 16px', borderRadius: 'var(--radius)',
+                      marginBottom: 4, fontSize: 14, fontWeight: 500,
+                      color: 'var(--text)', cursor: 'pointer',
+                      background: isExpanded ? 'rgba(99,102,241,0.04)' : 'transparent',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <span style={{ fontSize: 18 }}>{item.icon}</span>
+                    {item.label}
+                    <span style={{ marginLeft: 'auto', fontSize: 10, transition: 'transform 0.2s', transform: isExpanded ? 'rotate(90deg)' : 'none' }}>▶</span>
+                  </div>
+                  {isExpanded && (
+                    <div style={{ paddingLeft: 20 }}>
+                      {item.children.map(child => {
+                        const searchParams = new URLSearchParams(child.path.includes('?') ? child.path.split('?')[1] : '')
+                        const tab = searchParams.get('tab') || 'music'
+                        return (
+                          <NavLink
+                            key={child.path}
+                            to={child.path}
+                            onClick={() => {
+                              closeSidebar()
+                              // Set the tab via URL search params
+                            }}
+                            style={({ isActive }) => ({
+                              display: 'flex', alignItems: 'center', gap: 8,
+                              padding: '8px 14px', borderRadius: 6,
+                              marginBottom: 2, fontSize: 13,
+                              fontWeight: isActive ? 600 : 400,
+                              color: isActive ? 'var(--primary)' : 'var(--text-secondary)',
+                              background: isActive ? 'rgba(99,102,241,0.06)' : 'transparent',
+                              textDecoration: 'none', transition: 'all 0.15s',
+                            })}
+                          >
+                            <span style={{ fontSize: 15 }}>{child.icon}</span>
+                            {child.label}
+                          </NavLink>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            }
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path!}
+                onClick={closeSidebar}
+                style={({ isActive }) => ({
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 16px', borderRadius: 'var(--radius)',
+                  marginBottom: 4, fontSize: 14, fontWeight: isActive ? 600 : 400,
+                  color: isActive ? 'var(--primary)' : 'var(--text)',
+                  background: isActive ? 'rgba(99,102,241,0.08)' : 'transparent',
+                  textDecoration: 'none', transition: 'all 0.15s',
+                })}
+              >
+                <span style={{ fontSize: 18 }}>{item.icon}</span>
+                {item.label}
+              </NavLink>
+            )
+          })}
 
           {/* 账户管理导航 */}
           <NavLink
@@ -223,6 +296,7 @@ function AppLayout() {
             <Route path="/drafts" element={<ProtectedRoute><Drafts /></ProtectedRoute>} />
             <Route path="/gallery" element={<ProtectedRoute><Gallery /></ProtectedRoute>} />
             <Route path="/friends" element={<ProtectedRoute><Friends /></ProtectedRoute>} />
+            <Route path="/hobbies" element={<ProtectedRoute><Hobbies /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/account" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
 
