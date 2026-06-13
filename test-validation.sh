@@ -227,26 +227,112 @@ fi
 echo ""
 
 # ========================================
-# Part F: 边界条件测试
+# Part F: OSS 模块验证 (需认证)
 # ========================================
-echo "--- F. 边界条件测试 ---"
+echo "--- F. OSS 模块验证 ---"
 
-run_test "F1 - register 用户名过短(<2)" \
+run_test "F1 - POST /oss/sign 未认证" \
+  "POST" "/oss/sign" \
+  '{"key":"test.jpg"}' \
+  "未登录"
+
+if [ -n "$TOKEN" ]; then
+  run_test "F2 - oss/sign 缺少key" \
+    "POST" "/oss/sign" \
+    '{"contentType":"image/jpeg"}' \
+    "文件路径" \
+    "$TOKEN"
+
+  run_test "F3 - oss/download 缺少key" \
+    "POST" "/oss/download" \
+    '{}' \
+    "文件路径" \
+    "$TOKEN"
+
+  run_test "F4 - oss/delete 缺少key" \
+    "POST" "/oss/delete" \
+    '{}' \
+    "文件路径" \
+    "$TOKEN"
+
+  run_test "F5 - oss/list 缺少prefix" \
+    "POST" "/oss/list" \
+    '{}' \
+    "前缀" \
+    "$TOKEN"
+fi
+echo ""
+
+# ========================================
+# Part G: AI 模块验证 (需认证)
+# ========================================
+echo "--- G. AI 模块验证 ---"
+
+run_test "G1 - POST /ai/chat 未认证" \
+  "POST" "/ai/chat" \
+  '{"messages":[{"role":"user","content":"hello"}],"dimensionId":"test"}' \
+  "未登录"
+
+if [ -n "$TOKEN" ]; then
+  run_test "G2 - ai/chat 缺少messages" \
+    "POST" "/ai/chat" \
+    '{"dimensionId":"childhood"}' \
+    "messages" \
+    "$TOKEN"
+
+  run_test "G3 - ai/chat 缺少dimensionId" \
+    "POST" "/ai/chat" \
+    '{"messages":[{"role":"user","content":"hello"}]}' \
+    "dimensionId" \
+    "$TOKEN"
+
+  run_test "G4 - ai/chat 空消息数组" \
+    "POST" "/ai/chat" \
+    '{"messages":[],"dimensionId":"childhood"}' \
+    "至少需要1条" \
+    "$TOKEN"
+
+  run_test "G5 - ai/chat 无效角色" \
+    "POST" "/ai/chat" \
+    '{"messages":[{"role":"bot","content":"hello"}],"dimensionId":"childhood"}' \
+    "system/user/assistant" \
+    "$TOKEN"
+
+  run_test "G6 - ai/generate-story 空消息" \
+    "POST" "/ai/generate-story" \
+    '{"messages":[]}' \
+    "至少需要1条" \
+    "$TOKEN"
+
+  run_test "G7 - ai/dimensions 正常请求" \
+    "GET" "/ai/dimensions" \
+    '{}' \
+    '"success":true' \
+    "$TOKEN"
+fi
+echo ""
+
+# ========================================
+# Part H: 边界条件测试
+# ========================================
+echo "--- H. 边界条件测试 ---"
+
+run_test "H1 - register 用户名过短(<2)" \
   "POST" "/auth/register" \
   '{"username":"a","email":"a@b.com","password":"123456"}' \
   "至少2"
 
-run_test "F2 - register 密码过短(<6)" \
+run_test "H2 - register 密码过短(<6)" \
   "POST" "/auth/register" \
   '{"username":"test2","email":"t2@b.com","password":"12345"}' \
   "至少6"
 
-run_test "F3 - phone-login 缺少验证码" \
+run_test "H3 - phone-login 缺少验证码" \
   "POST" "/auth/phone-login" \
   '{"phone":"13800138000"}' \
   "验证码不能为空"
 
-run_test "F4 - 不存在的路由" \
+run_test "H4 - 不存在的路由" \
   "POST" "/auth/nonexistent" \
   '{}' \
   "接口不存在"

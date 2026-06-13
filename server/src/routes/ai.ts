@@ -10,6 +10,9 @@ import {
   getDimensions,
   ChatMessage,
 } from '../lib/ai'
+import {
+  chatSchema, generateStorySchema,
+} from '../validators/ai.validator.js'
 
 const router = Router()
 
@@ -29,15 +32,13 @@ router.get('/dimensions', async (req: Request, res: Response) => {
 
 router.post('/chat', async (req: Request, res: Response) => {
   try {
-    const { messages, dimensionId } = req.body
+    const validationResult = chatSchema.safeParse(req.body)
+    if (!validationResult.success) {
+      const errors = validationResult.error.issues.map((e: any) => e.message)
+      return res.status(400).json({ success: false, error: errors[0] || '输入验证失败' })
+    }
 
-    // 验证参数
-    if (!messages || !Array.isArray(messages)) {
-      return res.status(400).json({ success: false, error: 'messages 必须是数组' })
-    }
-    if (!dimensionId || typeof dimensionId !== 'string') {
-      return res.status(400).json({ success: false, error: 'dimensionId 必须是字符串' })
-    }
+    const { messages, dimensionId } = validationResult.data
 
     // 调用 AI 服务
     const result = await chat(messages as ChatMessage[], dimensionId)
@@ -53,12 +54,13 @@ router.post('/chat', async (req: Request, res: Response) => {
 
 router.post('/generate-story', async (req: Request, res: Response) => {
   try {
-    const { messages } = req.body
-
-    // 验证参数
-    if (!messages || !Array.isArray(messages)) {
-      return res.status(400).json({ success: false, error: 'messages 必须是数组' })
+    const validationResult = generateStorySchema.safeParse(req.body)
+    if (!validationResult.success) {
+      const errors = validationResult.error.issues.map((e: any) => e.message)
+      return res.status(400).json({ success: false, error: errors[0] || '输入验证失败' })
     }
+
+    const { messages } = validationResult.data
 
     // 调用 AI 服务生成故事
     const story = await generateStory(messages as ChatMessage[])
