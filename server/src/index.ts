@@ -19,6 +19,7 @@ import express, { Request, Response, NextFunction } from 'express'
 import cors from 'cors'
 import rateLimit from 'express-rate-limit'
 import helmet from 'helmet'
+import compression from 'compression'
 import { config } from 'dotenv'
 import path from 'node:path'
 
@@ -91,6 +92,16 @@ app.use(cors({
   },
   credentials: true,
   maxAge: 86400, // 24小时预检缓存
+}))
+
+// Gzip 响应压缩 (跳过小响应和已压缩的MIME类型)
+app.use(compression({
+  threshold: 1024,        // 只压缩 >1KB 的响应
+  filter: (req, _res) => {
+    // 不压缩健康检查
+    if (req.path === '/health') return false
+    return compression.filter(req, _res)
+  },
 }))
 
 // 全局限流：15分钟内最多100次请求
