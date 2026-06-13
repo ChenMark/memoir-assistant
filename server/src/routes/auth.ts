@@ -9,6 +9,9 @@ import {
   verifyPassword, generateToken, verifyToken, sanitizeUser, updateUser,
   generateSMSCode, canSendSMS, storeSMSCode, verifySMSCode, sendSMS,
 } from '../lib/auth.js'
+import {
+  registerSchema, loginSchema, sendSMSSchema, phoneLoginSchema, updateUserSchema,
+} from '../validators/auth.validator.js'
 
 const router = Router()
 
@@ -40,23 +43,14 @@ export function authMiddleware(req: Request, res: Response, next: Function) {
 // ============ POST /auth/register ============
 router.post('/register', async (req: Request, res: Response) => {
   try {
-    const { username, email, password, phone } = req.body || {}
-
-    if (!username || !email || !password) {
-      return res.status(400).json({ error: '用户名、邮箱和密码为必填项' })
+    // 使用 Zod 验证输入
+    const validationResult = registerSchema.safeParse(req.body)
+    if (!validationResult.success) {
+      const errors = validationResult.error.issues.map((e: any) => e.message)
+      return res.status(400).json({ error: errors[0] || '输入验证失败' })
     }
-    if (username.trim().length < 2 || username.trim().length > 20) {
-      return res.status(400).json({ error: '用户名需 2-20 个字符' })
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ error: '邮箱格式不正确' })
-    }
-    if (password.length < 6) {
-      return res.status(400).json({ error: '密码至少 6 个字符' })
-    }
-    if (phone && !/^1[3-9]\d{9}$/.test(phone)) {
-      return res.status(400).json({ error: '手机号格式不正确' })
-    }
+    
+    const { username, email, password, phone } = validationResult.data
 
     const [emailExists, nameExists] = await Promise.all([
       findUserByEmail(email),

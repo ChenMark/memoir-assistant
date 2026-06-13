@@ -4,9 +4,7 @@
 import { z } from 'zod'
 
 // 好友分类枚举
-const FriendCategoryEnum = z.enum(['family', 'class_mate', 'friend'], {
-  errorMap: () => ({ message: '分类必须是 family、class_mate 或 friend' }),
-})
+const FriendCategoryEnum = z.enum(['family', 'class_mate', 'friend'])
 
 // ============ 创建好友 ============
 export const createFriendSchema = z.object({
