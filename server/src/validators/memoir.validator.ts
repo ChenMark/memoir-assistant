@@ -30,9 +30,7 @@ export const createMemoirSchema = z.object({
     .default(true),
 })
 
-export const updateMemoirSchema = createMemoirSchema.partial().extend({
-  id: z.string().min(1, 'ID不能为空'),
-})
+export const updateMemoirSchema = createMemoirSchema.partial()
 
 // ============ 草稿 Draft ============
 

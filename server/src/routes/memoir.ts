@@ -73,6 +73,249 @@ router.get('/', async (req: Request, res: Response) => {
   }
 })
 
+// ============ 草稿 Draft ===========
+// 注意: 草稿路由必须放在 /:id 之前，否则 /draft 会被 /:id 捕获
+
+interface Draft {
+  id: string
+  userId: string
+  title: string
+  content: string
+  tags: string[]
+  mood?: string
+  date?: string
+  media: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+/** GET /memoir/draft — 获取所有草稿 */
+router.get('/draft', async (req: Request, res: Response) => {
+  try {
+    const uid = userId(req)
+    const drafts = await prisma.draft.findMany({
+      where: { userId: uid },
+      orderBy: { updatedAt: 'desc' }
+    })
+    const result: Draft[] = drafts.map((d: any) => ({
+      id: d.id,
+      userId: d.userId,
+      title: d.title,
+      content: d.content,
+      tags: JSON.parse(d.tags || '[]'),
+      mood: d.mood || undefined,
+      date: d.date || undefined,
+      media: JSON.parse(d.media || '[]'),
+      createdAt: d.createdAt.toISOString(),
+      updatedAt: d.updatedAt.toISOString(),
+    }))
+    res.json({ drafts: result })
+  } catch (err: any) {
+    console.error('[draft/]', err.message)
+    res.status(500).json({ error: '获取草稿失败' })
+  }
+})
+
+/** POST /memoir/draft — 保存草稿 */
+router.post('/draft', async (req: Request, res: Response) => {
+  try {
+    // 使用 Zod 验证输入
+    const validationResult = saveDraftSchema.safeParse(req.body)
+    if (!validationResult.success) {
+      const errors = validationResult.error.issues.map(e => e.message)
+      return res.status(400).json({ error: errors[0] || '输入验证失败' })
+    }
+    
+    const uid = userId(req)
+    const { id, title, content, tags, mood, date, media } = validationResult.data
+    const now = nowISO()
+
+    if (id) {
+      // 更新现有草稿
+      const existing = await prisma.draft.findFirst({
+        where: { id, userId: uid }
+      })
+      if (!existing) {
+        return res.status(404).json({ error: '草稿不存在' })
+      }
+      const updated = await prisma.draft.update({
+        where: { id },
+        data: {
+          title: title !== undefined ? title : existing.title,
+          content: content !== undefined ? content : existing.content,
+          tags: tags !== undefined ? JSON.stringify(tags) : existing.tags,
+          mood: mood !== undefined ? mood : existing.mood,
+          date: date !== undefined ? date : existing.date,
+          media: media !== undefined ? JSON.stringify(media) : existing.media,
+          updatedAt: new Date(),
+        }
+      })
+      const result: Draft = {
+        id: updated.id,
+        userId: updated.userId,
+        title: updated.title,
+        content: updated.content,
+        tags: JSON.parse(updated.tags || '[]'),
+        mood: updated.mood || undefined,
+        date: updated.date || undefined,
+        media: JSON.parse(updated.media || '[]'),
+        createdAt: updated.createdAt.toISOString(),
+        updatedAt: updated.updatedAt.toISOString(),
+      }
+      res.json({ draft: result })
+    } else {
+      // 创建新草稿
+      const draft = await prisma.draft.create({
+        data: {
+          id: genId(),
+          userId: uid,
+          title: title || '未命名草稿',
+          content: content || '',
+          tags: JSON.stringify(tags || []),
+          mood: mood || null,
+          date: date || null,
+          media: JSON.stringify(media || []),
+        }
+      })
+      const result: Draft = {
+        id: draft.id,
+        userId: draft.userId,
+        title: draft.title,
+        content: draft.content,
+        tags: JSON.parse(draft.tags || '[]'),
+        mood: draft.mood || undefined,
+        date: draft.date || undefined,
+        media: JSON.parse(draft.media || '[]'),
+        createdAt: draft.createdAt.toISOString(),
+        updatedAt: draft.updatedAt.toISOString(),
+      }
+      res.status(201).json({ draft: result })
+    }
+  } catch (err: any) {
+    console.error('[draft POST]', err.message)
+    res.status(500).json({ error: '保存草稿失败' })
+  }
+})
+
+/** DELETE /memoir/draft/:id — 删除草稿 */
+router.delete('/draft/:id', async (req: Request, res: Response) => {
+  try {
+    const uid = userId(req)
+    const existing = await prisma.draft.findFirst({
+      where: { id: req.params.id, userId: uid }
+    })
+    if (!existing) {
+      return res.status(404).json({ error: '草稿不存在' })
+    }
+    await prisma.draft.delete({ where: { id: req.params.id } })
+    res.json({ success: true })
+  } catch (err: any) {
+    console.error('[draft DELETE]', err.message)
+    res.status(500).json({ error: '删除草稿失败' })
+  }
+})
+
+// ============ 画廊 Gallery ===========
+// 注意: 画廊路由也必须放在 /:id 之前
+
+interface GalleryItem {
+  id: string
+  userId: string
+  memoirId?: string
+  ossKey: string
+  caption: string
+  tags: string[]
+  date: string
+  createdAt: string
+}
+
+/** GET /memoir/gallery — 获取画廊列表 */
+router.get('/gallery', async (req: Request, res: Response) => {
+  try {
+    const uid = userId(req)
+    const items = await prisma.gallery.findMany({
+      where: { userId: uid },
+      orderBy: { date: 'desc' }
+    })
+    const result: GalleryItem[] = items.map((item: any) => ({
+      id: item.id,
+      userId: item.userId,
+      memoirId: item.memoirId || undefined,
+      ossKey: item.ossKey,
+      caption: item.caption,
+      tags: JSON.parse(item.tags || '[]'),
+      date: item.date,
+      createdAt: item.createdAt.toISOString(),
+    }))
+    res.json({ gallery: result })
+  } catch (err: any) {
+    console.error('[gallery]', err.message)
+    res.status(500).json({ error: '获取画廊失败' })
+  }
+})
+
+/** POST /memoir/gallery — 添加画廊图片 */
+router.post('/gallery', async (req: Request, res: Response) => {
+  try {
+    // 使用 Zod 验证输入
+    const validationResult = createGallerySchema.safeParse(req.body)
+    if (!validationResult.success) {
+      const errors = validationResult.error.issues.map(e => e.message)
+      return res.status(400).json({ error: errors[0] || '输入验证失败' })
+    }
+    
+    const uid = userId(req)
+    const { ossKey, caption, tags, date, memoirId } = validationResult.data
+
+    const item = await prisma.gallery.create({
+      data: {
+        id: genId(),
+        userId: uid,
+        memoirId: memoirId || null,
+        ossKey,
+        caption: caption || '',
+        tags: JSON.stringify(tags || []),
+        date,
+      }
+    })
+    const result: GalleryItem = {
+      id: item.id,
+      userId: item.userId,
+      memoirId: item.memoirId || undefined,
+      ossKey: item.ossKey,
+      caption: item.caption,
+      tags: JSON.parse(item.tags || '[]'),
+      date: item.date,
+      createdAt: item.createdAt.toISOString(),
+    }
+    res.status(201).json({ item: result })
+  } catch (err: any) {
+    console.error('[gallery POST]', err.message)
+    res.status(500).json({ error: '添加画廊失败' })
+  }
+})
+
+/** DELETE /memoir/gallery/:id — 删除画廊图片 */
+router.delete('/gallery/:id', async (req: Request, res: Response) => {
+  try {
+    const uid = userId(req)
+    const existing = await prisma.gallery.findFirst({
+      where: { id: req.params.id, userId: uid }
+    })
+    if (!existing) {
+      return res.status(404).json({ error: '图片不存在' })
+    }
+    await prisma.gallery.delete({ where: { id: req.params.id } })
+    res.json({ success: true })
+  } catch (err: any) {
+    console.error('[gallery DELETE]', err.message)
+    res.status(500).json({ error: '删除画廊失败' })
+  }
+})
+
+// ============ 回忆录单条操作 ===========
+// 注意: /:id 参数路由必须在 /draft 和 /gallery 之后定义
+
 /** GET /memoir/:id — 获取单个回忆录 */
 router.get('/:id', async (req: Request, res: Response) => {
   try {
@@ -163,7 +406,8 @@ router.put('/:id', async (req: Request, res: Response) => {
     }
     
     const uid = userId(req)
-    const { id, title, content, date, tags, mood, location, media, isPublished } = validationResult.data
+    const id = req.params.id
+    const { title, content, date, tags, mood, location, media, isPublished } = validationResult.data
     
     const existing = await prisma.memoir.findFirst({
       where: { id, userId: uid }
@@ -222,244 +466,6 @@ router.delete('/:id', async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('[memoir DELETE]', err.message)
     res.status(500).json({ error: '删除回忆录失败' })
-  }
-})
-
-// ============ 草稿 Draft ===========
-
-interface Draft {
-  id: string
-  userId: string
-  title: string
-  content: string
-  tags: string[]
-  mood?: string
-  date?: string
-  media: string[]
-  createdAt: string
-  updatedAt: string
-}
-
-/** GET /draft — 获取所有草稿 */
-router.get('/draft', async (req: Request, res: Response) => {
-  try {
-    const uid = userId(req)
-    const drafts = await prisma.draft.findMany({
-      where: { userId: uid },
-      orderBy: { updatedAt: 'desc' }
-    })
-    const result: Draft[] = drafts.map((d: any) => ({
-      id: d.id,
-      userId: d.userId,
-      title: d.title,
-      content: d.content,
-      tags: JSON.parse(d.tags || '[]'),
-      mood: d.mood || undefined,
-      date: d.date || undefined,
-      media: JSON.parse(d.media || '[]'),
-      createdAt: d.createdAt.toISOString(),
-      updatedAt: d.updatedAt.toISOString(),
-    }))
-    res.json({ drafts: result })
-  } catch (err: any) {
-    console.error('[draft/]', err.message)
-    res.status(500).json({ error: '获取草稿失败' })
-  }
-})
-
-/** POST /draft — 保存草稿 */
-router.post('/draft', async (req: Request, res: Response) => {
-  try {
-    // 使用 Zod 验证输入
-    const validationResult = saveDraftSchema.safeParse(req.body)
-    if (!validationResult.success) {
-      const errors = validationResult.error.issues.map(e => e.message)
-      return res.status(400).json({ error: errors[0] || '输入验证失败' })
-    }
-    
-    const uid = userId(req)
-    const { id, title, content, tags, mood, date, media } = validationResult.data
-    const now = nowISO()
-
-    if (id) {
-      // 更新现有草稿
-      const existing = await prisma.draft.findFirst({
-        where: { id, userId: uid }
-      })
-      if (!existing) {
-        return res.status(404).json({ error: '草稿不存在' })
-      }
-      const updated = await prisma.draft.update({
-        where: { id },
-        data: {
-          title: title !== undefined ? title : existing.title,
-          content: content !== undefined ? content : existing.content,
-          tags: tags !== undefined ? JSON.stringify(tags) : existing.tags,
-          mood: mood !== undefined ? mood : existing.mood,
-          date: date !== undefined ? date : existing.date,
-          media: media !== undefined ? JSON.stringify(media) : existing.media,
-          updatedAt: new Date(),
-        }
-      })
-      const result: Draft = {
-        id: updated.id,
-        userId: updated.userId,
-        title: updated.title,
-        content: updated.content,
-        tags: JSON.parse(updated.tags || '[]'),
-        mood: updated.mood || undefined,
-        date: updated.date || undefined,
-        media: JSON.parse(updated.media || '[]'),
-        createdAt: updated.createdAt.toISOString(),
-        updatedAt: updated.updatedAt.toISOString(),
-      }
-      res.json({ draft: result })
-    } else {
-      // 创建新草稿
-      const draft = await prisma.draft.create({
-        data: {
-          id: genId(),
-          userId: uid,
-          title: title || '未命名草稿',
-          content: content || '',
-          tags: JSON.stringify(tags || []),
-          mood: mood || null,
-          date: date || null,
-          media: JSON.stringify(media || []),
-        }
-      })
-      const result: Draft = {
-        id: draft.id,
-        userId: draft.userId,
-        title: draft.title,
-        content: draft.content,
-        tags: JSON.parse(draft.tags || '[]'),
-        mood: draft.mood || undefined,
-        date: draft.date || undefined,
-        media: JSON.parse(draft.media || '[]'),
-        createdAt: draft.createdAt.toISOString(),
-        updatedAt: draft.updatedAt.toISOString(),
-      }
-      res.status(201).json({ draft: result })
-    }
-  } catch (err: any) {
-    console.error('[draft POST]', err.message)
-    res.status(500).json({ error: '保存草稿失败' })
-  }
-})
-
-/** DELETE /draft/:id — 删除草稿 */
-router.delete('/draft/:id', async (req: Request, res: Response) => {
-  try {
-    const uid = userId(req)
-    const existing = await prisma.draft.findFirst({
-      where: { id: req.params.id, userId: uid }
-    })
-    if (!existing) {
-      return res.status(404).json({ error: '草稿不存在' })
-    }
-    await prisma.draft.delete({ where: { id: req.params.id } })
-    res.json({ success: true })
-  } catch (err: any) {
-    console.error('[draft DELETE]', err.message)
-    res.status(500).json({ error: '删除草稿失败' })
-  }
-})
-
-// ============ 画廊 Gallery ===========
-
-interface GalleryItem {
-  id: string
-  userId: string
-  memoirId?: string
-  ossKey: string
-  caption: string
-  tags: string[]
-  date: string
-  createdAt: string
-}
-
-/** GET /gallery — 获取画廊列表 */
-router.get('/gallery', async (req: Request, res: Response) => {
-  try {
-    const uid = userId(req)
-    const items = await prisma.gallery.findMany({
-      where: { userId: uid },
-      orderBy: { date: 'desc' }
-    })
-    const result: GalleryItem[] = items.map((item: any) => ({
-      id: item.id,
-      userId: item.userId,
-      memoirId: item.memoirId || undefined,
-      ossKey: item.ossKey,
-      caption: item.caption,
-      tags: JSON.parse(item.tags || '[]'),
-      date: item.date,
-      createdAt: item.createdAt.toISOString(),
-    }))
-    res.json({ gallery: result })
-  } catch (err: any) {
-    console.error('[gallery]', err.message)
-    res.status(500).json({ error: '获取画廊失败' })
-  }
-})
-
-/** POST /gallery — 添加画廊图片 */
-router.post('/gallery', async (req: Request, res: Response) => {
-  try {
-    // 使用 Zod 验证输入
-    const validationResult = createGallerySchema.safeParse(req.body)
-    if (!validationResult.success) {
-      const errors = validationResult.error.issues.map(e => e.message)
-      return res.status(400).json({ error: errors[0] || '输入验证失败' })
-    }
-    
-    const uid = userId(req)
-    const { ossKey, caption, tags, date, memoirId } = validationResult.data
-
-    const item = await prisma.gallery.create({
-      data: {
-        id: genId(),
-        userId: uid,
-        memoirId: memoirId || null,
-        ossKey,
-        caption: caption || '',
-        tags: JSON.stringify(tags || []),
-        date,
-      }
-    })
-    const result: GalleryItem = {
-      id: item.id,
-      userId: item.userId,
-      memoirId: item.memoirId || undefined,
-      ossKey: item.ossKey,
-      caption: item.caption,
-      tags: JSON.parse(item.tags || '[]'),
-      date: item.date,
-      createdAt: item.createdAt.toISOString(),
-    }
-    res.status(201).json({ item: result })
-  } catch (err: any) {
-    console.error('[gallery POST]', err.message)
-    res.status(500).json({ error: '添加画廊失败' })
-  }
-})
-
-/** DELETE /gallery/:id — 删除画廊图片 */
-router.delete('/gallery/:id', async (req: Request, res: Response) => {
-  try {
-    const uid = userId(req)
-    const existing = await prisma.gallery.findFirst({
-      where: { id: req.params.id, userId: uid }
-    })
-    if (!existing) {
-      return res.status(404).json({ error: '图片不存在' })
-    }
-    await prisma.gallery.delete({ where: { id: req.params.id } })
-    res.json({ success: true })
-  } catch (err: any) {
-    console.error('[gallery DELETE]', err.message)
-    res.status(500).json({ error: '删除画廊失败' })
   }
 })
 
