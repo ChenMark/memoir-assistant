@@ -28,7 +28,7 @@ interface Friend {
   category: 'family' | 'class_mate' | 'friend'
   // 家族树
   relationship?: string
-  generation?: number
+  generation?: number  // 辈分：+2,+3,+4=祖辈，+1=父辈，0=同辈，-1,-2,-3=子、孙辈
   parentId?: string
   spouseId?: string  // 配偶ID，用于建立夫妻关系
   // 同学录
