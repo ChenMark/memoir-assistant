@@ -116,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiFetch('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ account: email, password }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || '登录失败')

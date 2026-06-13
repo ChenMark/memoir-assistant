@@ -5,14 +5,14 @@ import { z } from 'zod'
 
 // ============ 注册 ============
 export const registerSchema = z.object({
-  username: z.string()
+  username: z.string('用户名不能为空')
     .min(2, '用户名至少2个字符')
     .max(20, '用户名最多20个字符')
     .regex(/^[a-zA-Z0-9_\u4e00-\u9fa5]+$/, '用户名只能包含字母、数字、下划线或中文'),
-  email: z.string()
+  email: z.string('邮箱不能为空')
     .email('邮箱格式不正确')
     .toLowerCase(),
-  password: z.string()
+  password: z.string('密码不能为空')
     .min(6, '密码至少6个字符')
     .max(50, '密码最多50个字符'),
   phone: z.string()
@@ -22,13 +22,13 @@ export const registerSchema = z.object({
 
 // ============ 登录 ============
 export const loginSchema = z.object({
-  account: z.string().min(1, '账号不能为空'),
-  password: z.string().min(1, '密码不能为空'),
+  account: z.string('账号不能为空').min(1, '账号不能为空'),
+  password: z.string('密码不能为空').min(1, '密码不能为空'),
 })
 
 // ============ 发送短信 ============
 export const sendSMSSchema = z.object({
-  phone: z.string()
+  phone: z.string('手机号不能为空')
     .regex(/^1[3-9]\d{9}$/, '手机号格式不正确'),
 })
 
