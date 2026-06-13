@@ -1,8 +1,8 @@
 import { describe, test, expect, jest, beforeEach } from '@jest/globals'
 import { sendMessage, generateStory, ChatMessage } from '../aiService'
 
-// Mock fetch
-global.fetch = jest.fn()
+// Mock fetch - using any to bypass strict type mismatch in test
+(global as any).fetch = jest.fn()
 
 describe('aiService', () => {
   beforeEach(() => {
@@ -13,15 +13,15 @@ describe('aiService', () => {
     test('should call API with correct parameters', async () => {
       const mockResponse = {
         ok: true,
-        json: jest.fn().mockResolvedValue({ success: true, data: 'Test reply' }),
+        json: jest.fn<() => Promise<any>>().mockResolvedValue({ success: true, data: 'Test reply' }),
       }
-      ;(global.fetch as jest.Mock).mockResolvedValue(mockResponse)
+      ;(global.fetch as any).mockResolvedValue(mockResponse)
 
       const messages: ChatMessage[] = [
         { role: 'user', content: 'Hello' },
       ]
 
-      const result = await sendMessage(messages)
+      const result = await sendMessage(messages, 'childhood')
 
       expect(global.fetch).toHaveBeenCalledWith(
         '/ai/chat',
@@ -30,7 +30,7 @@ describe('aiService', () => {
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
           }),
-          body: JSON.stringify({ messages }),
+          body: JSON.stringify({ messages, dimensionId: 'childhood' }),
         })
       )
       expect(result).toBe('Test reply')
@@ -39,23 +39,23 @@ describe('aiService', () => {
     test('should handle API error', async () => {
       const mockResponse = {
         ok: false,
-        json: jest.fn().mockResolvedValue({ success: false, error: 'API Error' }),
+        json: jest.fn<() => Promise<any>>().mockResolvedValue({ success: false, error: 'API Error' }),
       }
-      ;(global.fetch as jest.Mock).mockResolvedValue(mockResponse)
+      ;(global.fetch as any).mockResolvedValue(mockResponse)
 
       const messages: ChatMessage[] = [
         { role: 'user', content: 'Hello' },
       ]
 
-      await expect(sendMessage(messages)).rejects.toThrow('API Error')
+      await expect(sendMessage(messages, 'childhood')).rejects.toThrow('API Error')
     })
 
     test('should include auth token if available', async () => {
       const mockResponse = {
         ok: true,
-        json: jest.fn().mockResolvedValue({ success: true, data: 'Test reply' }),
+        json: jest.fn<() => Promise<any>>().mockResolvedValue({ success: true, data: 'Test reply' }),
       }
-      ;(global.fetch as jest.Mock).mockResolvedValue(mockResponse)
+      ;(global.fetch as any).mockResolvedValue(mockResponse)
 
       // Mock localStorage with token
       const localStorageMock = {
@@ -69,7 +69,7 @@ describe('aiService', () => {
         { role: 'user', content: 'Hello' },
       ]
 
-      await sendMessage(messages)
+      await sendMessage(messages, 'childhood')
 
       expect(global.fetch).toHaveBeenCalledWith(
         '/ai/chat',
@@ -86,9 +86,9 @@ describe('aiService', () => {
     test('should call API with messages', async () => {
       const mockResponse = {
         ok: true,
-        json: jest.fn().mockResolvedValue({ success: true, data: { story: 'Test story' } }),
+        json: jest.fn<() => Promise<any>>().mockResolvedValue({ success: true, data: { story: 'Test story' } }),
       }
-      ;(global.fetch as jest.Mock).mockResolvedValue(mockResponse)
+      ;(global.fetch as any).mockResolvedValue(mockResponse)
 
       const messages: ChatMessage[] = [
         { role: 'user', content: 'My story' },

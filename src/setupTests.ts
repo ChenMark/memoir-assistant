@@ -21,19 +21,23 @@ global.fetch = jest.fn()
 global.alert = jest.fn()
 
 // Mock window.confirm
-global.confirm = jest.fn()
+;(global as any).confirm = jest.fn()
 
 // Mock IntersectionObserver
-global.IntersectionObserver = class IntersectionObserver {
-  constructor() {}
+;(global as any).IntersectionObserver = class {
+  constructor(_callback: IntersectionObserverCallback, _options?: IntersectionObserverInit) {}
   observe() {}
   unobserve() {}
   disconnect() {}
+  takeRecords() { return [] }
+  root: Element | Document | null = null
+  rootMargin: string = ''
+  thresholds: ReadonlyArray<number> = []
 }
 
 // Mock ResizeObserver
-global.ResizeObserver = class ResizeObserver {
-  constructor() {}
+;(global as any).ResizeObserver = class {
+  constructor(_callback: ResizeObserverCallback) {}
   observe() {}
   unobserve() {}
   disconnect() {}

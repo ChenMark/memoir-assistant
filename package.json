@@ -17,7 +17,12 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "lint": "eslint 'src/**/*.{ts,tsx}' 'server/src/**/*.ts'",
+    "lint:fix": "eslint --fix 'src/**/*.{ts,tsx}' 'server/src/**/*.ts'",
+    "format": "prettier --write 'src/**/*.{ts,tsx,css}' 'server/src/**/*.ts'",
+    "format:check": "prettier --check 'src/**/*.{ts,tsx,css}' 'server/src/**/*.ts'",
+    "check": "npm run lint && npm run format:check"
   },
   "dependencies": {
     "ali-oss": "^6.21.0",
@@ -41,9 +46,13 @@
     "@types/node": "^25.9.1",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
+    "@typescript-eslint/eslint-plugin": "^8.61.0",
+    "@typescript-eslint/parser": "^8.61.0",
     "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^10.5.0",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
+    "prettier": "^3.8.4",
     "ts-jest": "^29.4.11",
     "typescript": "^5.3.3",
     "vite": "^5.0.12"

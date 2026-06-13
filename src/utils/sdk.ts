@@ -77,7 +77,7 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
 }
 
 export class OSSStorageService {
-  constructor(config?: any) {}
+  constructor(_config?: any) {}
 
   async getUploadUrl(key: string, contentType: string = 'application/octet-stream'): Promise<string> {
     const url = '/api/oss/sign'
@@ -224,7 +224,7 @@ export class SecurityService {
    */
   static verifySignature(
     params: Record<string, string | number>,
-    receivedSign: string,
+    _receivedSign: string,
     secret: string
   ): boolean {
     const sorted = Object.keys(params).sort()
@@ -522,8 +522,8 @@ export function createSDK(config: SDKConfig): MemoirSDK {
 // 供后端验证签名的导出函数
 export function verifyRequestSignature(
   params: Record<string, string | number>,
-  receivedSign: string,
-  secret: string
+  _receivedSign: string,
+  _secret: string
 ): boolean {
-  return SecurityService.verifySignature(params, receivedSign, secret)
+  return SecurityService.verifySignature(params, _receivedSign, _secret)
 }
