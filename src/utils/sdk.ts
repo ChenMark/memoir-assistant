@@ -404,6 +404,36 @@ export class MemoirSDK {
   }
 
   // ============ 照片管理 ============
+  /**
+   * 前端图片压缩 (canvas-based)
+   * 在上传到 OSS 前降低图片分辨率，减少存储和带宽成本
+   */
+  async compressImage(file: File, maxW: number = 1920, maxH: number = 1920, quality: number = 0.85): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      const url = URL.createObjectURL(file)
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        let { width, height } = img
+        // 等比缩放
+        if (width > maxW) { height = Math.round(height * maxW / width); width = maxW }
+        if (height > maxH) { width = Math.round(width * maxH / height); height = maxH }
+        
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')!
+        ctx.drawImage(img, 0, 0, width, height)
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob)
+          else reject(new Error('Canvas toBlob failed'))
+        }, file.type || 'image/jpeg', quality)
+      }
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('图片加载失败')) }
+      img.src = url
+    })
+  }
+
   async uploadPhoto(file: File, onProgress?: (pct: number) => void): Promise<MemoirPhoto> {
     const id = `photo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
     const key = `memoir/photos/${id}_${file.name}`
@@ -417,6 +447,65 @@ export class MemoirSDK {
     }
     this.savePhotoToLocal(photo)
     return photo
+  }
+
+  /**
+   * 上传照片并同步画廊记录到云端
+   * 完整的上传→压缩→OSS→云端同步流程
+   */
+  async uploadAndSync(file: File, onProgress?: (pct: number) => void): Promise<MemoirPhoto & { galleryId?: string }> {
+    // Step 1: 前端压缩
+    let uploadFile: File | Blob = file
+    if (file.type.startsWith('image/') && file.size > 500 * 1024) {
+      try {
+        uploadFile = await this.compressImage(file)
+        onProgress?.(5) // 压缩完成 5%
+      } catch {
+        uploadFile = file // 压缩失败则原图上传
+      }
+    }
+
+    // Step 2: 上传到 OSS (直传，不经过应用服务器)
+    const id = `photo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    const key = `memoir/photos/${id}_${file.name}`
+    const url = await this.storage.upload(key, uploadFile, (pct) => {
+      onProgress?.(5 + Math.round(pct * 0.85)) // 6-90%
+    })
+
+    const photo: MemoirPhoto = {
+      id, name: file.name, url, uploadedAt: Date.now(), size: file.size,
+    }
+
+    // Step 3: 同步到云端画廊
+    let galleryId: string | undefined
+    try {
+      const token = localStorage.getItem('memoir_auth_token')
+      if (token) {
+        const res = await fetch('/api/memoir/gallery', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            ossKey: key,
+            caption: file.name,
+            date: new Date().toISOString().slice(0, 10),
+            tags: ['照片'],
+          }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          galleryId = data.item?.id
+        }
+        onProgress?.(95)
+      }
+    } catch {} // 云端同步静默失败，本地仍然可用
+
+    // Step 4: 保存到本地
+    this.savePhotoToLocal(photo)
+    onProgress?.(100)
+    return { ...photo, galleryId }
   }
 
   private savePhotoToLocal(photo: MemoirPhoto): void {
