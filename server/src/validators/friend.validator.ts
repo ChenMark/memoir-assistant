@@ -8,8 +8,7 @@ const FriendCategoryEnum = z.enum(['family', 'class_mate', 'friend'])
 
 // ============ 创建好友 ============
 export const createFriendSchema = z.object({
-  name: z.string()
-    .min(1, '好友姓名不能为空')
+  name: z.string('好友姓名不能为空')
     .max(100, '好友姓名最多100个字符')
     .trim(),
   avatar: z.string()

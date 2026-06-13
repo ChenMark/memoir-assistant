@@ -34,9 +34,9 @@ export const sendSMSSchema = z.object({
 
 // ============ 手机号登录 ============
 export const phoneLoginSchema = z.object({
-  phone: z.string()
+  phone: z.string('手机号不能为空')
     .regex(/^1[3-9]\d{9}$/, '手机号格式不正确'),
-  code: z.string()
+  code: z.string('验证码不能为空')
     .length(6, '验证码为6位数字')
     .regex(/^\d+$/, '验证码只能是数字'),
 })

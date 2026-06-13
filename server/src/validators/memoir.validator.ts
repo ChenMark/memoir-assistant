@@ -6,14 +6,13 @@ import { z } from 'zod'
 // ============ 回忆录 Memoir ============
 
 export const createMemoirSchema = z.object({
-  title: z.string()
-    .min(1, '标题不能为空')
+  title: z.string('标题不能为空')
     .max(200, '标题最多200个字符')
     .trim(),
   content: z.string()
     .max(50000, '内容最多50000个字符')
     .default(''),
-  date: z.string()
+  date: z.string('日期不能为空')
     .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式应为 YYYY-MM-DD'),
   tags: z.array(z.string().max(50, '标签最多50个字符'))
     .max(20, '最多20个标签')
@@ -62,8 +61,7 @@ export const saveDraftSchema = z.object({
 // ============ 画廊 Gallery ============
 
 export const createGallerySchema = z.object({
-  ossKey: z.string()
-    .min(1, '图片地址不能为空')
+  ossKey: z.string('图片地址不能为空')
     .max(500, '图片地址最多500个字符'),
   caption: z.string()
     .max(500, '描述最多500个字符')
@@ -71,10 +69,9 @@ export const createGallerySchema = z.object({
   tags: z.array(z.string().max(50, '标签最多50个字符'))
     .max(20, '最多20个标签')
     .default([]),
-  date: z.string()
+  date: z.string('日期不能为空')
     .regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式应为 YYYY-MM-DD'),
   memoirId: z.string()
-    .min(1, '回忆录ID不能为空')
     .optional(),
 })
 

@@ -2,7 +2,6 @@
  * OSS 存储抽象层
  * 封装阿里云 OSS 的初始化和常用操作
  */
-// @ts-expect-error ali-oss 没有类型声明文件
 import OSS from 'ali-oss'
 
 let ossClient: OSS | null = null
