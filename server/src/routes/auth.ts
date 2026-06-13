@@ -77,12 +77,16 @@ router.post('/register', async (req: Request, res: Response) => {
 // ============ POST /auth/login ============
 router.post('/login', loginLimiter, async (req: Request, res: Response) => {
   try {
-    const { account, email, password } = req.body || {}
-    const loginAccount = account || email
-    if (!loginAccount || !password) {
-      return res.status(400).json({ error: '账号和密码为必填项' })
+    // 使用 Zod 验证输入
+    const validationResult = loginSchema.safeParse(req.body)
+    if (!validationResult.success) {
+      const errors = validationResult.error.issues.map((e: any) => e.message)
+      return res.status(400).json({ error: errors[0] || '输入验证失败' })
     }
-
+    
+    const { account, password } = validationResult.data
+    const loginAccount = account
+    
     let user = await findUserByEmail(loginAccount)
     if (!user) user = await findUserByUsername(loginAccount)
     if (!user) user = await findUserByPhone(loginAccount)
@@ -116,13 +120,17 @@ router.get('/me', authMiddleware, async (req: Request, res: Response) => {
 // ============ PUT /auth/me — 更新用户信息 ============
 router.put('/me', authMiddleware, async (req: Request, res: Response) => {
   try {
+    // 使用 Zod 验证输入
+    const validationResult = updateUserSchema.safeParse(req.body)
+    if (!validationResult.success) {
+      const errors = validationResult.error.issues.map((e: any) => e.message)
+      return res.status(400).json({ error: errors[0] || '输入验证失败' })
+    }
+    
     const userId = (req as any).userId
-    const { username, bio } = req.body || {}
+    const { username, bio } = validationResult.data
     const updates: any = {}
     if (username !== undefined) {
-      if (username.trim().length < 2 || username.trim().length > 20) {
-        return res.status(400).json({ error: '用户名需 2-20 个字符' })
-      }
       updates.username = username.trim()
     }
     if (bio !== undefined) updates.bio = bio
@@ -138,10 +146,14 @@ router.put('/me', authMiddleware, async (req: Request, res: Response) => {
 // ============ POST /auth/send-sms ============
 router.post('/send-sms', async (req: Request, res: Response) => {
   try {
-    const { phone } = req.body || {}
-    if (!phone || !/^1[3-9]\d{9}$/.test(phone)) {
-      return res.status(400).json({ error: '手机号格式不正确' })
+    // 使用 Zod 验证输入
+    const validationResult = sendSMSSchema.safeParse(req.body)
+    if (!validationResult.success) {
+      const errors = validationResult.error.issues.map((e: any) => e.message)
+      return res.status(400).json({ error: errors[0] || '输入验证失败' })
     }
+    
+    const { phone } = validationResult.data
     const { allowed, waitSeconds } = canSendSMS(phone)
     if (!allowed) {
       return res.status(429).json({ error: `请 ${waitSeconds} 秒后再试`, waitSeconds })
@@ -159,11 +171,15 @@ router.post('/send-sms', async (req: Request, res: Response) => {
 // ============ POST /auth/phone-login ============
 router.post('/phone-login', async (req: Request, res: Response) => {
   try {
-    const { phone, code } = req.body || {}
-    if (!phone || !/^1[3-9]\d{9}$/.test(phone)) {
-      return res.status(400).json({ error: '手机号格式不正确' })
+    // 使用 Zod 验证输入
+    const validationResult = phoneLoginSchema.safeParse(req.body)
+    if (!validationResult.success) {
+      const errors = validationResult.error.issues.map((e: any) => e.message)
+      return res.status(400).json({ error: errors[0] || '输入验证失败' })
     }
-    if (!code) return res.status(400).json({ error: '请输入验证码' })
+    
+    const { phone, code } = validationResult.data
+    
     if (!verifySMSCode(phone, code)) {
       return res.status(400).json({ error: '验证码错误或已过期' })
     }
