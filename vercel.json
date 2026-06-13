@@ -3,9 +3,12 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
+  "installCommand": "npm install && cd server && npm install && npx prisma generate",
   "functions": {
     "api/**/*.ts": {
-      "runtime": "@vercel/node@5.8.4"
+      "runtime": "@vercel/node@5.8.4",
+      "memory": 256,
+      "maxDuration": 30
     }
   },
   "rewrites": [
