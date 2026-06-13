@@ -20,6 +20,11 @@ export default function Gallery() {
   const [previewPhoto, setPreviewPhoto] = useState<MemoirPhoto | null>(null)
   const [filter, setFilter] = useState('')
   const [dragOver, setDragOver] = useState(false)
+  const [shareInfo, setShareInfo] = useState<{ url: string; token: string } | null>(null)
+  const [comments, setComments] = useState<Array<{ id: string; content: string; user: { id: string; username: string; avatar?: string }; createdAt: string }>>([])
+  const [commentInput, setCommentInput] = useState('')
+  const [loadingComments, setLoadingComments] = useState(false)
+  const [copied, setCopied] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const loadPhotos = useCallback(() => {
@@ -111,11 +116,99 @@ export default function Gallery() {
   const openPreview = (photo: MemoirPhoto) => {
     setPreviewPhoto(photo)
     setPreviewUrl(photo.url)
+    setShareInfo(null)
+    setComments([])
+    setCommentInput('')
+    loadComments(photo)
   }
 
   const closePreview = () => {
     setPreviewUrl(null)
     setPreviewPhoto(null)
+    setShareInfo(null)
+    setComments([])
+    setCommentInput('')
+  }
+
+  // 分享
+  const handleShare = async (photo: MemoirPhoto) => {
+    if (!photo.galleryId) {
+      // 先尝试云端同步
+      try {
+        const sdk = getSDK()
+        const result = await sdk.uploadAndSync(
+          new File([], photo.name),
+          () => {},
+        )
+        if (result.galleryId) {
+          photo = { ...photo, galleryId: result.galleryId }
+        }
+      } catch {
+        // 无法同步，使用本地分享
+      }
+    }
+
+    const token = localStorage.getItem('memoir_auth_token')
+    if (!token || !photo.galleryId) return
+
+    try {
+      const res = await fetch(`/api/memoir/gallery/${photo.galleryId}/share`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setShareInfo(data)
+      }
+    } catch {}
+  }
+
+  const handleCopyLink = () => {
+    if (shareInfo) {
+      navigator.clipboard.writeText(shareInfo.url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  // 评论
+  const loadComments = async (photo: MemoirPhoto) => {
+    if (!photo.galleryId) return
+    setLoadingComments(true)
+    try {
+      const token = localStorage.getItem('memoir_auth_token')
+      const res = await fetch(`/api/memoir/gallery/${photo.galleryId}/comments`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setComments(data.comments || [])
+      }
+    } catch {} finally {
+      setLoadingComments(false)
+    }
+  }
+
+  const handleAddComment = async () => {
+    if (!commentInput.trim() || !previewPhoto?.galleryId) return
+    const token = localStorage.getItem('memoir_auth_token')
+    if (!token) return
+
+    try {
+      const res = await fetch(`/api/memoir/gallery/${previewPhoto.galleryId}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ content: commentInput.trim() }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setComments((prev) => [...prev, data.comment])
+        setCommentInput('')
+      }
+    } catch {}
   }
 
   const filtered = filter
@@ -469,51 +562,59 @@ export default function Gallery() {
       {previewUrl && previewPhoto && (
         <div
           style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.85)',
-            zIndex: 10000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.85)', zIndex: 10000,
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+            paddingTop: '5vh', overflow: 'auto',
           }}
           onClick={closePreview}
         >
-          <div
-            style={{ maxWidth: '90vw', maxHeight: '90vh', position: 'relative' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <img
-              src={previewUrl}
-              alt={previewPhoto.name}
-              style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: 8 }}
-            />
-            <div
-              style={{ color: '#fff', textAlign: 'center', marginTop: 12, fontSize: 13 }}
-            >
-              {previewPhoto.name}
+          <div style={{ display: 'flex', gap: 16, maxWidth: '95vw' }} onClick={e => e.stopPropagation()}>
+            {/* 图片 */}
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <img src={previewUrl} alt={previewPhoto.name} style={{ maxWidth: '60vw', maxHeight: '80vh', borderRadius: 8 }} />
+              <button onClick={closePreview} style={{ position: 'absolute', top: -12, right: -12, background: '#fff', border: 'none', borderRadius: '50%', width: 32, height: 32, fontSize: 18, cursor: 'pointer', boxShadow: 'var(--shadow-lg)' }}>✕</button>
             </div>
-            <button
-              onClick={closePreview}
-              style={{
-                position: 'absolute',
-                top: -12,
-                right: -12,
-                background: '#fff',
-                border: 'none',
-                borderRadius: '50%',
-                width: 32,
-                height: 32,
-                fontSize: 18,
-                cursor: 'pointer',
-                boxShadow: 'var(--shadow-lg)',
-              }}
-            >
-              ✕
-            </button>
+            {/* 右侧面板 */}
+            <div style={{ width: 280, background: '#fff', borderRadius: 12, display: 'flex', flexDirection: 'column', maxHeight: '80vh', overflow: 'hidden' }}>
+              <div style={{ padding: 16, borderBottom: '1px solid var(--border)' }}>
+                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{previewPhoto.name}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{new Date(previewPhoto.uploadedAt).toLocaleDateString('zh-CN')}</div>
+              </div>
+              {/* 分享 */}
+              <div style={{ padding: 12, borderBottom: '1px solid var(--border)' }}>
+                <button onClick={() => handleShare(previewPhoto)} style={{ width: '100%', padding: '8px', background: shareInfo ? '#22c55e' : 'var(--primary)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>
+                  {shareInfo ? '✅ 已生成' : '🔗 分享'}
+                </button>
+                {shareInfo && (
+                  <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
+                    <input value={shareInfo.url} readOnly style={{ flex: 1, padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11, background: '#f8f9fa' }} />
+                    <button onClick={handleCopyLink} style={{ padding: '6px 12px', background: copied ? '#22c55e' : '#333', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>{copied ? '✓' : '复制'}</button>
+                  </div>
+                )}
+              </div>
+              {/* 评论 */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <div style={{ padding: '8px 16px', fontSize: 13, fontWeight: 600, borderBottom: '1px solid var(--border)' }}>💬 评论 ({comments.length})</div>
+                <div style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {loadingComments ? <div style={{ textAlign: 'center', fontSize: 12, color: '#999', padding: 20 }}>加载中...</div>
+                  : comments.length === 0 ? <div style={{ textAlign: 'center', fontSize: 12, color: '#999', padding: 20 }}>暂无评论</div>
+                  : comments.map(c => (
+                    <div key={c.id} style={{ background: '#f8f9fa', borderRadius: 8, padding: '8px 10px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>{c.user.username}</span>
+                        <span style={{ fontSize: 10, color: '#999' }}>{new Date(c.createdAt).toLocaleDateString('zh-CN')}</span>
+                      </div>
+                      <div style={{ fontSize: 13, lineHeight: 1.5 }}>{c.content}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ padding: 12, borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
+                  <input value={commentInput} onChange={e => setCommentInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleAddComment() }} placeholder="写评论..." style={{ flex: 1, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13 }} />
+                  <button onClick={handleAddComment} disabled={!commentInput.trim()} style={{ padding: '8px 14px', background: commentInput.trim() ? 'var(--primary)' : '#ccc', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, cursor: commentInput.trim() ? 'pointer' : 'default' }}>发送</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

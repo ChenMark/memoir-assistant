@@ -21,6 +21,7 @@ export interface MemoirPhoto {
   thumbnailUrl?: string
   uploadedAt: number
   size: number
+  galleryId?: string  // 云端画廊记录ID，用于评论和分享
 }
 
 export interface Friend {

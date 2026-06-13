@@ -32,6 +32,7 @@ model User {
   drafts         Draft[]
   galleries      Gallery[]
   friends        Friend[]
+  comments       PhotoComment[]
   
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -93,15 +94,34 @@ model Gallery {
   caption     String   @default("")
   tags        String   // JSON array string
   date        String   // YYYY-MM-DD
+  shareToken  String?  @unique  // 分享令牌，唯一且可撤销
   
   // Relations
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   memoir      Memoir?  @relation(fields: [memoirId], references: [id], onDelete: SetNull)
+  comments    PhotoComment[]
 
   createdAt   DateTime @default(now())
 
   @@index([userId])
   @@map("galleries")
+}
+
+// ============ PhotoComment ============
+model PhotoComment {
+  id        String   @id @default(cuid())
+  galleryId String
+  userId    String
+  content   String
+  
+  // Relations
+  gallery   Gallery  @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([galleryId])
+  @@map("photo_comments")
 }
 
 // ============ Friend ============

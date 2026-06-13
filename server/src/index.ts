@@ -31,6 +31,7 @@ import ossRoutes from './routes/oss.js'
 import memoirRoutes from './routes/memoir.js'
 import aiRoutes from './routes/ai.js'
 import friendRoutes from './routes/friend.js'
+import galleryInteractRoutes, { sharedPhotoHandler } from './routes/gallery-interact.js'
 import { requestLogger } from './middleware/requestLogger.js'
 import { sanitizeInput } from './middleware/sanitize.js'
 import { errorHandler } from './middleware/errorHandler.js'
@@ -145,6 +146,11 @@ app.use('/memoir', authMiddleware, bodySizeLimit(200 * 1024), memoirRoutes)
 app.use('/ai', authMiddleware, bodySizeLimit(1 * 1024 * 1024), aiRoutes)
 // Friend 路由：限制 10KB
 app.use('/friend', authMiddleware, bodySizeLimit(10 * 1024), friendRoutes)
+
+// 画廊交互（评论+分享）：需要认证
+app.use('/memoir/gallery', authMiddleware, bodySizeLimit(10 * 1024), galleryInteractRoutes)
+// 公开分享访问：无需认证
+app.get('/shared/photo/:token', sharedPhotoHandler)
 
 // ============ 电信能力平台 Token 交换 ============
 app.post('/telecom/token', async (req, res) => {
