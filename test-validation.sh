@@ -337,6 +337,108 @@ run_test "H4 - 不存在的路由" \
   '{}' \
   "接口不存在"
 
+# ========================================
+# Part I: 爱好模块验证 (需认证)
+# ========================================
+echo "--- I. 爱好模块验证 ---"
+
+run_test "I1 - GET /hobby 未认证" \
+  "GET" "/hobby" \
+  '{}' \
+  "未登录"
+
+if [ -n "$TOKEN" ]; then
+  run_test "I2 - 添加金曲" \
+    "POST" "/hobby" \
+    '{"category":"music","title":"Yesterday","year":"1965","rating":5}' \
+    '"hobby"' \
+    "$TOKEN"
+
+  run_test "I3 - 添加电影" \
+    "POST" "/hobby" \
+    '{"category":"movie","title":"肖申克的救赎","year":"1994","rating":5}' \
+    '"hobby"' \
+    "$TOKEN"
+
+  run_test "I4 - 无效分类拒绝" \
+    "POST" "/hobby" \
+    '{"category":"invalid","title":"test"}' \
+    "分类无效" \
+    "$TOKEN"
+
+  run_test "I5 - 缺少标题拒绝" \
+    "POST" "/hobby" \
+    '{"category":"music"}' \
+    "不能为空" \
+    "$TOKEN"
+
+  run_test "I6 - 按分类获取" \
+    "GET" "/hobby?category=music" \
+    '{}' \
+    '"hobbies"' \
+    "$TOKEN"
+
+  run_test "I7 - 获取全部爱好" \
+    "GET" "/hobby" \
+    '{}' \
+    '"hobbies"' \
+    "$TOKEN"
+fi
+echo ""
+
+# ========================================
+# Part J: 画廊交互验证 (评论+分享)
+# ========================================
+echo "--- J. 画廊交互验证 ---"
+
+if [ -n "$TOKEN" ]; then
+  # 先创建一条画廊记录用于测试
+  GALLERY_RESP=$(curl -s -X POST "$BASE_URL/memoir/gallery" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $TOKEN" \
+    -d '{"ossKey":"uploads/2026/test-interact.jpg","caption":"测试评论分享","date":"2026-06-13"}')
+  GALLERY_ID=$(echo "$GALLERY_RESP" | grep -o '"id":"[^"]*"' | head -1 | sed 's/"id":"//;s/"//')
+
+  if [ -n "$GALLERY_ID" ]; then
+    run_test "J1 - 添加评论" \
+      "POST" "/memoir/gallery/$GALLERY_ID/comments" \
+      '{"content":"这张照片拍得真好！"}' \
+      '"comment"' \
+      "$TOKEN"
+
+    run_test "J2 - 获取评论列表" \
+      "GET" "/memoir/gallery/$GALLERY_ID/comments" \
+      '{}' \
+      '"comments"' \
+      "$TOKEN"
+
+    run_test "J3 - 生成分享链接" \
+      "POST" "/memoir/gallery/$GALLERY_ID/share" \
+      '{}' \
+      '"shareToken"' \
+      "$TOKEN"
+
+    # 获取分享 token 测试公开访问
+    SHARE_TOKEN=$(echo "$SHARE_RESP" | grep -o '"shareToken":"[^"]*"' | head -1 | sed 's/"shareToken":"//;s/"//')
+
+    if [ -n "$SHARE_TOKEN" ]; then
+      SHARED_RESP=$(curl -s "$BASE_URL/shared/photo/$SHARE_TOKEN")
+      if echo "$SHARED_RESP" | grep -q '"caption"'; then
+        echo -e "  ${GREEN}✅${NC} J4 - 公开访问分享(无需认证)"
+        PASSED=$((PASSED + 1))
+      else
+        echo -e "  ${RED}❌${NC} J4 - 公开访问分享失败"
+        echo "      token=$SHARE_TOKEN response=$SHARED_RESP"
+        FAILED=$((FAILED + 1))
+      fi
+    else
+      echo -e "  ${YELLOW}⚠️${NC}  J4 - 跳过 (无法提取shareToken)"
+      SKIPPED=$((SKIPPED + 1))
+    fi
+  fi
+fi
+echo ""
+
 # ================================================================
 echo "================================"
 echo "📊 测试完成: ✅ $PASSED 通过, ❌ $FAILED 失败"
