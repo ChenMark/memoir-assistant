@@ -4,6 +4,10 @@
 import { Router, Request, Response } from 'express'
 import { authMiddleware } from './auth.js'
 import { prisma } from '../lib/prisma.js'
+import {
+  createMemoirSchema, updateMemoirSchema, saveDraftSchema,
+  createGallerySchema,
+} from '../validators/memoir.validator.js'
 import crypto from 'node:crypto'
 
 const router = Router()
@@ -103,9 +107,15 @@ router.get('/:id', async (req: Request, res: Response) => {
 /** POST /memoir — 创建回忆录 */
 router.post('/', async (req: Request, res: Response) => {
   try {
+    // 使用 Zod 验证输入
+    const validationResult = createMemoirSchema.safeParse(req.body)
+    if (!validationResult.success) {
+      const errors = validationResult.error.errors.map(e => e.message)
+      return res.status(400).json({ error: errors[0] || '输入验证失败' })
+    }
+    
     const uid = userId(req)
-    const { title, content, date, tags, mood, location, media } = req.body || {}
-    if (!title || !date) return res.status(400).json({ error: '标题和日期为必填项' })
+    const { title, content, date, tags, mood, location, media, isPublished } = validationResult.data
 
     const memoir = await prisma.memoir.create({
       data: {
@@ -145,17 +155,25 @@ router.post('/', async (req: Request, res: Response) => {
 /** PUT /memoir/:id — 更新回忆录 */
 router.put('/:id', async (req: Request, res: Response) => {
   try {
+    // 使用 Zod 验证输入
+    const validationResult = updateMemoirSchema.safeParse(req.body)
+    if (!validationResult.success) {
+      const errors = validationResult.error.errors.map(e => e.message)
+      return res.status(400).json({ error: errors[0] || '输入验证失败' })
+    }
+    
     const uid = userId(req)
+    const { id, title, content, date, tags, mood, location, media, isPublished } = validationResult.data
+    
     const existing = await prisma.memoir.findFirst({
-      where: { id: req.params.id, userId: uid }
+      where: { id, userId: uid }
     })
     if (!existing) {
       return res.status(404).json({ error: '回忆录不存在' })
     }
-
-    const { title, content, date, tags, mood, location, media, isPublished } = req.body || {}
+    
     const updated = await prisma.memoir.update({
-      where: { id: req.params.id },
+      where: { id },
       data: {
         title: title !== undefined ? title.trim() : existing.title,
         content: content !== undefined ? content : existing.content,
@@ -252,8 +270,15 @@ router.get('/draft', async (req: Request, res: Response) => {
 /** POST /draft — 保存草稿 */
 router.post('/draft', async (req: Request, res: Response) => {
   try {
+    // 使用 Zod 验证输入
+    const validationResult = saveDraftSchema.safeParse(req.body)
+    if (!validationResult.success) {
+      const errors = validationResult.error.errors.map(e => e.message)
+      return res.status(400).json({ error: errors[0] || '输入验证失败' })
+    }
+    
     const uid = userId(req)
-    const { id, title, content, tags, mood, date, media } = req.body || {}
+    const { id, title, content, tags, mood, date, media } = validationResult.data
     const now = nowISO()
 
     if (id) {
@@ -382,9 +407,15 @@ router.get('/gallery', async (req: Request, res: Response) => {
 /** POST /gallery — 添加画廊图片 */
 router.post('/gallery', async (req: Request, res: Response) => {
   try {
+    // 使用 Zod 验证输入
+    const validationResult = createGallerySchema.safeParse(req.body)
+    if (!validationResult.success) {
+      const errors = validationResult.error.errors.map(e => e.message)
+      return res.status(400).json({ error: errors[0] || '输入验证失败' })
+    }
+    
     const uid = userId(req)
-    const { ossKey, caption, tags, date, memoirId } = req.body || {}
-    if (!ossKey || !date) return res.status(400).json({ error: '图片地址和日期为必填项' })
+    const { ossKey, caption, tags, date, memoirId } = validationResult.data
 
     const item = await prisma.gallery.create({
       data: {
