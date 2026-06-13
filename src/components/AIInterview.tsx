@@ -388,32 +388,111 @@ export default function AIInterview() {
 
   // =========== 渲染 ===========
   const currentDim = dimensions.find(d => d.id === currentDimension)
+  const completedCount = dimensions.filter(d => {
+    try {
+      const key = `memoir_interview_messages_${d.id}`
+      const saved = localStorage.getItem(key)
+      return saved && JSON.parse(saved).length > 2
+    } catch { return false }
+  }).length
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 120px)', gap: 20 }}>
       {/* 左侧：对话界面 */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)' }}>
-        {/* 顶部：维度选择 */}
-        <div style={{ padding: 16, borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {dimensions.map(dim => (
-            <button
-              key={dim.id}
-              onClick={() => handleDimensionChange(dim.id)}
-              style={{
-                padding: '6px 12px',
-                borderRadius: 20,
-                border: currentDimension === dim.id ? '2px solid var(--primary)' : '1px solid var(--border)',
-                background: currentDimension === dim.id ? 'rgba(99,102,241,0.1)' : 'transparent',
-                color: currentDimension === dim.id ? 'var(--primary)' : 'var(--text)',
-                fontSize: 13,
-                cursor: 'pointer',
-                fontWeight: currentDimension === dim.id ? 600 : 400,
-              }}
-            >
-              {dim.name}
-            </button>
-          ))}
+        {/* 顶部：阶段选择 + 进度 */}
+        <div style={{ padding: 16, borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>📋 选择访谈话题</span>
+            <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+              已聊 {completedCount}/{dimensions.length} 个话题
+            </span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 6 }}>
+            {dimensions.map(dim => {
+              const hasChat = (() => {
+                try {
+                  const key = `memoir_interview_messages_${dim.id}`
+                  const saved = localStorage.getItem(key)
+                  return saved && JSON.parse(saved).length > 2
+                } catch { return false }
+              })()
+              return (
+                <button
+                  key={dim.id}
+                  onClick={() => handleDimensionChange(dim.id)}
+                  title={dim.description}
+                  style={{
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    border: currentDimension === dim.id ? '2px solid var(--primary)' : '1px solid var(--border)',
+                    background: currentDimension === dim.id ? 'rgba(99,102,241,0.08)' : hasChat ? 'rgba(34,197,94,0.06)' : 'transparent',
+                    color: currentDimension === dim.id ? 'var(--primary)' : 'var(--text)',
+                    fontSize: 12,
+                    cursor: 'pointer',
+                    fontWeight: currentDimension === dim.id ? 600 : 400,
+                    textAlign: 'center',
+                    transition: 'all 0.15s',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 2,
+                  }}
+                >
+                  <span>{dim.name}</span>
+                  {hasChat && <span style={{ fontSize: 10, color: '#22c55e' }}>● 已聊</span>}
+                </button>
+              )
+            })}
+          </div>
         </div>
+
+        {/* 提示词面板 */}
+        {currentDim && (
+          <div style={{
+            padding: '10px 16px',
+            background: 'rgba(99,102,241,0.04)',
+            borderBottom: '1px solid var(--border)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            overflowX: 'auto',
+            flexWrap: 'nowrap',
+          }}>
+            <span style={{ fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0, fontWeight: 600 }}>💡 参考：</span>
+            {currentDim.prompts.map((prompt, i) => (
+              <button
+                key={i}
+                onClick={() => { setInput(prompt) }}
+                title="点击填入输入框"
+                style={{
+                  padding: '4px 12px',
+                  borderRadius: 14,
+                  border: '1px solid var(--border)',
+                  background: '#fff',
+                  color: 'var(--text)',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = 'var(--primary)'
+                  e.currentTarget.style.color = '#fff'
+                  e.currentTarget.style.borderColor = 'var(--primary)'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = '#fff'
+                  e.currentTarget.style.color = 'var(--text)'
+                  e.currentTarget.style.borderColor = 'var(--border)'
+                }}
+              >
+                {prompt.length > 18 ? prompt.slice(0, 18) + '…' : prompt}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* 消息列表 */}
         <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
