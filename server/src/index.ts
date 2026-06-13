@@ -29,6 +29,9 @@ import ossRoutes from './routes/oss.js'
 import memoirRoutes from './routes/memoir.js'
 import aiRoutes from './routes/ai.js'
 import friendRoutes from './routes/friend.js'
+import { requestLogger } from './middleware/requestLogger.js'
+import { sanitizeInput } from './middleware/sanitize.js'
+import { errorHandler } from './middleware/errorHandler.js'
 
 const app = express()
 const PORT = process.env.BACKEND_PORT ? parseInt(process.env.BACKEND_PORT) : 3002
@@ -44,20 +47,6 @@ function validateEnv() {
   }
 }
 validateEnv()
-
-// ============ 请求日志中间件 ============
-function requestLogger(req: Request, _res: Response, next: NextFunction) {
-  const start = Date.now()
-  const { method, originalUrl } = req
-  // 在响应完成时记录日志
-  _res.on('finish', () => {
-    const duration = Date.now() - start
-    const status = _res.statusCode
-    const statusIcon = status >= 500 ? '❌' : status >= 400 ? '⚠️' : status >= 300 ? '↪️' : '✅'
-    console.log(`[${new Date().toLocaleTimeString('zh-CN')}] ${statusIcon} ${method} ${originalUrl} ${status} ${duration}ms`)
-  })
-  next()
-}
 
 // ============ 中间件 ============
 // CORS 白名单配置
@@ -91,6 +80,7 @@ const globalLimiter = rateLimit({
 
 app.use(requestLogger)
 app.use(express.json({ limit: '50mb' }))
+app.use(sanitizeInput)
 app.use(globalLimiter)
 
 // ============ 路由注册 ============
@@ -133,12 +123,7 @@ app.use((_req, res) => {
 })
 
 // ============ 全局错误处理 ============
-app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  console.error('[Global Error]', err.message, err.stack)
-  const status = err.status || 500
-  const message = status >= 500 ? '服务器内部错误' : (err.message || '请求处理失败')
-  res.status(status).json({ success: false, error: message, ...(err.details && { details: err.details }) })
-})
+app.use(errorHandler)
 
 // ============ 启动 ============
 app.listen(PORT, () => {
