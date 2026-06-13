@@ -113,7 +113,7 @@ model Friend {
   addedAt        DateTime  @default(now())
   category       String   // 'family' | 'class_mate' | 'friend'
   relationship   String?  // 家族关系
-  generation     Int?      // 辈分
+  generation     Int?    // 辈分：+2,+3,+4=祖辈，+1=父辈，0=同辈，-1,-2,-3=子、孙辈
   parentId       String?  // 父节点ID，用于家族树
   spouseId       String?  // 配偶ID
   school         String?  // 学校
