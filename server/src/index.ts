@@ -18,6 +18,7 @@
 import express, { Request, Response, NextFunction } from 'express'
 import cors from 'cors'
 import rateLimit from 'express-rate-limit'
+import helmet from 'helmet'
 import { config } from 'dotenv'
 import path from 'node:path'
 
@@ -56,6 +57,29 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || [
   'http://localhost:8080'
 ]
 
+// Security headers (Helmet)
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+      connectSrc: ["'self'", ...ALLOWED_ORIGINS],
+      frameAncestors: ["'none'"],
+      formAction: ["'self'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+  },
+}))
+
+// CORS
 app.use(cors({
   origin: (origin, callback) => {
     // 允许无 origin 的请求（同源请求、移动端、Postman 等）
@@ -79,20 +103,37 @@ const globalLimiter = rateLimit({
 })
 
 app.use(requestLogger)
-app.use(express.json({ limit: '50mb' }))
+// 全局 body 解析：1MB (足够覆盖聊天消息，拒绝过大的恶意请求)
+app.use(express.json({ limit: '1mb' }))
 app.use(sanitizeInput)
 app.use(globalLimiter)
+
+// 小 payload 路由的额外大小检查中间件
+function bodySizeLimit(maxBytes: number) {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    const len = parseInt(req.headers['content-length'] || '0', 10)
+    if (len > maxBytes) {
+      return _res.status(413).json({ error: '请求体过大' })
+    }
+    next()
+  }
+}
 
 // ============ 路由注册 ============
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString(), uptime: process.uptime() })
 })
 
-app.use('/auth', authRoutes)
-app.use('/oss', authMiddleware, ossRoutes)
-app.use('/memoir', authMiddleware, memoirRoutes)
-app.use('/ai', authMiddleware, aiRoutes)
-app.use('/friend', authMiddleware, friendRoutes)
+// Auth 路由：限制 10KB
+app.use('/auth', bodySizeLimit(10 * 1024), authRoutes)
+// OSS 路由：限制 10KB
+app.use('/oss', authMiddleware, bodySizeLimit(10 * 1024), ossRoutes)
+// Memoir 路由：限制 200KB (回忆录可能较长)
+app.use('/memoir', authMiddleware, bodySizeLimit(200 * 1024), memoirRoutes)
+// AI 路由：限制 1MB (聊天消息数组)
+app.use('/ai', authMiddleware, bodySizeLimit(1 * 1024 * 1024), aiRoutes)
+// Friend 路由：限制 10KB
+app.use('/friend', authMiddleware, bodySizeLimit(10 * 1024), friendRoutes)
 
 // ============ 电信能力平台 Token 交换 ============
 app.post('/telecom/token', async (req, res) => {
