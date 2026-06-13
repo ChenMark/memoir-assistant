@@ -1,10 +1,11 @@
 /**
- * 好友管理路由 — 好友的 CRUD（Prisma）
+ * 好友管理路由 — 好友的 CRUD（Prisma + Zod验证）
  */
 import { Router, Request, Response } from 'express'
 import { authMiddleware } from './auth.js'
 import { prisma } from '../lib/prisma.js'
 import crypto from 'node:crypto'
+import { createFriendSchema, updateFriendSchema } from '../validators/friend.validator.js'
 
 const router = Router()
 
@@ -50,7 +51,7 @@ router.get('/', async (req: Request, res: Response) => {
       orderBy: { addedAt: 'desc' }
     })
     
-    const result: Friend[] = friends.map(f => ({
+    const result: Friend[] = friends.map((f: any) => ({
       id: f.id,
       name: f.name,
       avatar: f.avatar || undefined,
@@ -78,11 +79,15 @@ router.get('/', async (req: Request, res: Response) => {
 // ============ POST /friend — 添加好友 ============
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const uid = userId(req)
-    const { name, avatar, category, relationship, generation, parentId, spouseId, school, classInfo, graduationYear, metAt, metYear, tags } = req.body || {}
+    // 使用 Zod 验证输入
+    const validationResult = createFriendSchema.safeParse(req.body)
+    if (!validationResult.success) {
+      const errors = validationResult.error.issues.map(e => e.message)
+      return res.status(400).json({ error: errors[0] || '输入验证失败' })
+    }
     
-    if (!name) return res.status(400).json({ error: '好友姓名为必填项' })
-    if (!category) return res.status(400).json({ error: '好友分类为必填项' })
+    const uid = userId(req)
+    const { name, avatar, category, relationship, generation, parentId, spouseId, school, classInfo, graduationYear, metAt, metYear, tags } = validationResult.data
     
     const friend = await prisma.friend.create({
       data: {
@@ -102,7 +107,7 @@ router.post('/', async (req: Request, res: Response) => {
         metYear: metYear || null,
         tags: JSON.stringify(tags || []),
       }
-    }))
+    })
     
     const result: Friend = {
       id: friend.id,
@@ -132,16 +137,24 @@ router.post('/', async (req: Request, res: Response) => {
 // ============ PUT /friend/:id — 更新好友 ============
 router.put('/:id', async (req: Request, res: Response) => {
   try {
+    // 使用 Zod 验证输入（合并 URL 参数 id 到 body 中验证）
+    const validationResult = updateFriendSchema.safeParse({ ...req.body, id: req.params.id })
+    if (!validationResult.success) {
+      const errors = validationResult.error.issues.map(e => e.message)
+      return res.status(400).json({ error: errors[0] || '输入验证失败' })
+    }
+    
     const uid = userId(req)
     const existing = await prisma.friend.findFirst({
       where: { id: req.params.id, userId: uid }
-    }))
+    })
     
     if (!existing) {
       return res.status(404).json({ error: '好友不存在' })
     }
     
-    const { name, avatar, category, relationship, generation, parentId, spouseId, school, classInfo, graduationYear, metAt, metYear, tags } = req.body || {}
+    // 从验证结果中解构，排除 id（id 来自 URL 参数）
+    const { id, name, avatar, category, relationship, generation, parentId, spouseId, school, classInfo, graduationYear, metAt, metYear, tags } = validationResult.data
     
     const updated = await prisma.friend.update({
       where: { id: req.params.id },
@@ -161,7 +174,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         tags: tags !== undefined ? JSON.stringify(tags) : existing.tags,
         updatedAt: new Date(),
       }
-    }))
+    })
     
     const result: Friend = {
       id: updated.id,
@@ -194,7 +207,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     const uid = userId(req)
     const existing = await prisma.friend.findFirst({
       where: { id: req.params.id, userId: uid }
-    }))
+    })
     
     if (!existing) {
       return res.status(404).json({ error: '好友不存在' })

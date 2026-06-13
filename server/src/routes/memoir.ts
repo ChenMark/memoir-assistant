@@ -52,7 +52,7 @@ router.get('/', async (req: Request, res: Response) => {
       where: { userId: uid },
       orderBy: { date: 'desc' }
     })
-    const result: Memoir[] = memoirs.map(m => ({
+    const result: Memoir[] = memoirs.map((m: any) => ({
       id: m.id,
       userId: m.userId,
       title: m.title,
@@ -110,7 +110,7 @@ router.post('/', async (req: Request, res: Response) => {
     // 使用 Zod 验证输入
     const validationResult = createMemoirSchema.safeParse(req.body)
     if (!validationResult.success) {
-      const errors = validationResult.error.errors.map(e => e.message)
+      const errors = validationResult.error.issues.map(e => e.message)
       return res.status(400).json({ error: errors[0] || '输入验证失败' })
     }
     
@@ -158,7 +158,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     // 使用 Zod 验证输入
     const validationResult = updateMemoirSchema.safeParse(req.body)
     if (!validationResult.success) {
-      const errors = validationResult.error.errors.map(e => e.message)
+      const errors = validationResult.error.issues.map(e => e.message)
       return res.status(400).json({ error: errors[0] || '输入验证失败' })
     }
     
@@ -248,7 +248,7 @@ router.get('/draft', async (req: Request, res: Response) => {
       where: { userId: uid },
       orderBy: { updatedAt: 'desc' }
     })
-    const result: Draft[] = drafts.map(d => ({
+    const result: Draft[] = drafts.map((d: any) => ({
       id: d.id,
       userId: d.userId,
       title: d.title,
@@ -273,7 +273,7 @@ router.post('/draft', async (req: Request, res: Response) => {
     // 使用 Zod 验证输入
     const validationResult = saveDraftSchema.safeParse(req.body)
     if (!validationResult.success) {
-      const errors = validationResult.error.errors.map(e => e.message)
+      const errors = validationResult.error.issues.map(e => e.message)
       return res.status(400).json({ error: errors[0] || '输入验证失败' })
     }
     
@@ -387,7 +387,7 @@ router.get('/gallery', async (req: Request, res: Response) => {
       where: { userId: uid },
       orderBy: { date: 'desc' }
     })
-    const result: GalleryItem[] = items.map(item => ({
+    const result: GalleryItem[] = items.map((item: any) => ({
       id: item.id,
       userId: item.userId,
       memoirId: item.memoirId || undefined,
@@ -410,7 +410,7 @@ router.post('/gallery', async (req: Request, res: Response) => {
     // 使用 Zod 验证输入
     const validationResult = createGallerySchema.safeParse(req.body)
     if (!validationResult.success) {
-      const errors = validationResult.error.errors.map(e => e.message)
+      const errors = validationResult.error.issues.map(e => e.message)
       return res.status(400).json({ error: errors[0] || '输入验证失败' })
     }
     
