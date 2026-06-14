@@ -15,10 +15,10 @@ import {
 
 const router = Router()
 
-// ============ 登录限流：15分钟内最多5次尝试 ============
+// ============ 登录限流：15分钟内最多20次尝试 ============
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 20,
   message: { success: false, error: '登录尝试次数过多，请15分钟后再试' },
   standardHeaders: true,
   legacyHeaders: false,

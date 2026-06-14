@@ -71,21 +71,23 @@ export default function Login() {
     setLocalError('')
     clearError()
     try {
-      // 先尝试登录
+      const demoEmail = 'demo@memoir.test'
+      const demoPassword = 'demo123456'
+      // 先尝试直接登录（之前注册过）
       try {
-        await login('demo@memoir.test', 'demo123456')
+        await login(demoEmail, demoPassword)
         navigate('/')
         return
       } catch {
-        // 登录失败，尝试注册
+        // 登录失败，注册新账号
       }
-      // 注册演示账号
-      await register('演示用户', 'demo@memoir.test', 'demo123456', undefined)
-      // 注册后登录
-      await login('demo@memoir.test', 'demo123456')
+      // 注册演示账号（使用ASCII用户名避免编码问题）
+      await register('DemoUser', demoEmail, demoPassword, undefined)
+      await login(demoEmail, demoPassword)
       navigate('/')
-    } catch (err: any) {
-      setLocalError(err.message || '演示登录失败，请手动注册')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '演示登录失败'
+      setLocalError(message || '演示登录失败，请手动注册')
     } finally {
       setDemoing(false)
     }
