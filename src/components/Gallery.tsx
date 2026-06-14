@@ -254,6 +254,7 @@ export default function Gallery() {
           <input
             type="text"
             placeholder="搜索照片..."
+            aria-label="搜索照片"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             style={{
@@ -558,6 +559,7 @@ export default function Gallery() {
                     fontSize: 11,
                     cursor: 'pointer',
                   }}
+                  aria-label={`删除 ${photo.name}`}
                 >
                   删除
                 </button>
@@ -598,7 +600,7 @@ export default function Gallery() {
                 {shareInfo && (
                   <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
                     <input value={shareInfo.url} readOnly style={{ flex: 1, padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11, background: '#f8f9fa' }} />
-                    <button onClick={handleCopyLink} style={{ padding: '6px 12px', background: copied ? '#22c55e' : '#333', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>{copied ? '✓' : '复制'}</button>
+                    <button onClick={handleCopyLink} aria-label="复制分享链接" style={{ padding: '6px 12px', background: copied ? '#22c55e' : '#333', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>{copied ? '✓' : '复制'}</button>
                   </div>
                 )}
               </div>
@@ -619,8 +621,8 @@ export default function Gallery() {
                   ))}
                 </div>
                 <div style={{ padding: 12, borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
-                  <input value={commentInput} onChange={e => setCommentInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleAddComment() }} placeholder="写评论..." style={{ flex: 1, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13 }} />
-                  <button onClick={handleAddComment} disabled={!commentInput.trim()} style={{ padding: '8px 14px', background: commentInput.trim() ? 'var(--primary)' : '#ccc', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, cursor: commentInput.trim() ? 'pointer' : 'default' }}>发送</button>
+                  <input value={commentInput} onChange={e => setCommentInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleAddComment() }} placeholder="写评论..." aria-label="输入评论" style={{ flex: 1, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13 }} />
+                  <button onClick={handleAddComment} disabled={!commentInput.trim()} aria-label="发送评论" style={{ padding: '8px 14px', background: commentInput.trim() ? 'var(--primary)' : '#ccc', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, cursor: commentInput.trim() ? 'pointer' : 'default' }}>发送</button>
                 </div>
               </div>
             </div>

@@ -58,25 +58,25 @@ export default function AIInterview() {
     try {
       const key = currentDimension ? `memoir_interview_messages_${currentDimension}` : 'memoir_interview_messages'
       localStorage.setItem(key, JSON.stringify(messages))
-    } catch {}
+    } catch { console.warn('[AIInterview] 对话保存失败，可能存储空间不足') }
   }, [messages, currentDimension])
 
   useEffect(() => {
-    try { localStorage.setItem('memoir_interview_dimension', currentDimension) } catch {}
+    try { localStorage.setItem('memoir_interview_dimension', currentDimension) } catch { console.warn('[AIInterview] 维度保存失败') }
   }, [currentDimension])
 
   useEffect(() => {
     try {
       const key = currentDimension ? `memoir_interview_story_${currentDimension}` : 'memoir_interview_story'
       localStorage.setItem(key, storyDraft)
-    } catch {}
+    } catch { console.warn('[AIInterview] 故事保存失败') }
   }, [storyDraft, currentDimension])
 
   useEffect(() => {
     try {
       const key = currentDimension ? `memoir_interview_phase_${currentDimension}` : 'memoir_interview_phase'
       localStorage.setItem(key, phase)
-    } catch {}
+    } catch { console.warn('[AIInterview] 保存失败') }
   }, [phase, currentDimension])
 
   // =========== 初始化 ===========
@@ -99,7 +99,7 @@ export default function AIInterview() {
       const messagesKey = savedDimId ? `memoir_interview_messages_${savedDimId}` : 'memoir_interview_messages'
       const savedMessagesRaw = localStorage.getItem(messagesKey)
       let hasSavedMessages = false
-      try { hasSavedMessages = savedMessagesRaw ? JSON.parse(savedMessagesRaw).length > 0 : false } catch {}
+      try { hasSavedMessages = savedMessagesRaw ? JSON.parse(savedMessagesRaw).length > 0 : false } catch { console.warn('[AIInterview] 保存失败') }
       
       if (hasSavedMessages) {
         // 有已保存的对话，恢复维度而不开始新访谈
@@ -221,7 +221,7 @@ export default function AIInterview() {
         setPhase(savedPhase as 'interview' | 'story')
         return
       }
-    } catch {}
+    } catch { console.warn('[AIInterview] 保存失败') }
     // 没有已保存的对话，开始新访谈
     setMessages([])
     setStoryDraft('')
@@ -539,7 +539,7 @@ export default function AIInterview() {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="输入你的回答...（Shift+Enter 换行）"
+            aria-label="输入你的回答" placeholder="...（Shift+Enter 换行）"
             disabled={loading}
             style={{
               flex: 1,

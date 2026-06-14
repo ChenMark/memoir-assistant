@@ -15,8 +15,14 @@ import { createSDK, MemoirSDK } from './utils/sdk'
 const sdk: MemoirSDK = createSDK({})
 
 // 将 SDK 挂载到 window，方便各组件访问
-;(window as any)._memoirSDK = sdk
-;(window as any)._memoirBackendUrl = ''  // 使用相对路径 /api/，无需指定域名
+declare global {
+  interface Window {
+    _memoirSDK: MemoirSDK
+    _memoirBackendUrl: string
+  }
+}
+window._memoirSDK = sdk
+window._memoirBackendUrl = ''  // 使用相对路径 /api/，无需指定域名
 
 const navItems = [
   { path: '/', label: '首页', icon: '' },
@@ -147,7 +153,7 @@ function AppLayout() {
           </div>
         )}
 
-        <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
+        <nav aria-label="主导航" style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
           {navItems.map(item => {
             if ('children' in item && item.children) {
               const isExpanded = expandedMenus.has(item.label)
@@ -243,7 +249,7 @@ function AppLayout() {
         </nav>
 
         <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <button
+          <button aria-label="退出登录"
             onClick={handleLogout}
             style={{
               background: 'none', border: 'none', color: 'var(--text-secondary)',
@@ -271,6 +277,7 @@ function AppLayout() {
         }} className="mobile-topbar">
           <button
             onClick={() => setSidebarOpen(true)}
+            aria-label="打开菜单"
             style={{
               background: 'none', border: 'none', fontSize: 22, cursor: 'pointer',
               color: 'var(--text)',

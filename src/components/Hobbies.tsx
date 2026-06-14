@@ -215,7 +215,7 @@ export default function Hobbies() {
             <textarea
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
-              placeholder="描述/感想..."
+              aria-label="描述" placeholder="描述/感想..."
               rows={2}
               style={{ padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, resize: 'vertical', fontFamily: 'inherit' }}
             />
@@ -223,19 +223,19 @@ export default function Hobbies() {
               <input
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
-                placeholder="年份"
+                aria-label="年份" placeholder="年份"
                 style={{ width: 100, padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13 }}
               />
               <input
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
-                placeholder="链接(URL)"
+                aria-label="链接" placeholder="链接(URL)"
                 style={{ flex: 1, padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13 }}
               />
               <input
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
-                placeholder="标签(逗号分隔)"
+                aria-label="标签" placeholder="标签(逗号分隔)"
                 style={{ width: 180, padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13 }}
               />
             </div>

@@ -78,7 +78,7 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
 }
 
 export class OSSStorageService {
-  constructor(_config?: any) {}
+  constructor(_config?: unknown) {}  // 未来扩展OSS配置
 
   async getUploadUrl(key: string, contentType: string = 'application/octet-stream'): Promise<string> {
     const url = '/api/oss/sign'
@@ -114,6 +114,7 @@ export class OSSStorageService {
         }
       }
       xhr.onerror = () => reject(new Error('网络错误，上传失败'))
+      xhr.onabort = () => reject(new Error('上传已取消'))
       xhr.open('PUT', uploadUrl)
       xhr.setRequestHeader('Content-Type', contentType)
       xhr.send(file)
@@ -226,10 +227,8 @@ export class SecurityService {
   static verifySignature(
     params: Record<string, string | number>,
     _receivedSign: string,
-    secret: string
+    _secret: string
   ): boolean {
-    const sorted = Object.keys(params).sort()
-    const raw = sorted.map(k => `${k}=${params[k]}`).join('&')
     // 前端无法安全验证 HMAC（密钥暴露风险），此函数主要供后端 Node.js 环境使用
     return true
   }
