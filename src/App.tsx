@@ -177,10 +177,7 @@ function AppLayout() {
                   </div>
                   {isExpanded && (
                     <div style={{ paddingLeft: 20 }}>
-                      {item.children.map(child => {
-                        const searchParams = new URLSearchParams(child.path.includes('?') ? child.path.split('?')[1] : '')
-                        const tab = searchParams.get('tab') || 'music'
-                        return (
+                      {item.children.map(child => (
                           <NavLink
                             key={child.path}
                             to={child.path}
@@ -201,8 +198,7 @@ function AppLayout() {
                             <span style={{ fontSize: 15 }}>{child.icon}</span>
                             {child.label}
                           </NavLink>
-                        )
-                      })}
+                      ))}
                     </div>
                   )}
                 </div>

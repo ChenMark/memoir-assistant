@@ -82,7 +82,9 @@ export default function Hobbies() {
         const data = await res.json()
         setHobbies(data.hobbies || [])
       }
-    } catch {} finally {
+    } catch (err) {
+      console.error('[Hobbies] 加载失败:', err)
+    } finally {
       setLoading(false)
     }
   }, [activeTab])
@@ -113,31 +115,39 @@ export default function Hobbies() {
 
   const handleSubmit = async () => {
     if (!title.trim()) return
-    const body = {
-      category: activeTab,
-      title: title.trim(),
-      description: desc.trim(),
-      rating: rating || null,
-      year: year || null,
-      link: link || null,
-      tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
-    }
-    const url = editId ? `${API}/${editId}` : API
-    const method = editId ? 'PUT' : 'POST'
-    const res = await authFetch(url, { method, body: JSON.stringify(body) })
-    if (res.ok) {
-      resetForm()
-      loadHobbies()
+    try {
+      const body = {
+        category: activeTab,
+        title: title.trim(),
+        description: desc.trim(),
+        rating: rating || null,
+        year: year || null,
+        link: link || null,
+        tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
+      }
+      const url = editId ? `${API}/${editId}` : API
+      const method = editId ? 'PUT' : 'POST'
+      const res = await authFetch(url, { method, body: JSON.stringify(body) })
+      if (res.ok) {
+        resetForm()
+        loadHobbies()
+      }
+    } catch (err) {
+      console.error('[Hobbies] 提交失败:', err)
     }
   }
 
   const handleDelete = async (id: string) => {
     if (!confirm('确定删除？')) return
-    await authFetch(`${API}/${id}`, { method: 'DELETE' })
+    try {
+      await authFetch(`${API}/${id}`, { method: 'DELETE' })
+    } catch (err) {
+      console.error('[Hobbies] 删除失败:', err)
+    }
     loadHobbies()
   }
 
-  const currentCat = CATEGORIES.find((c) => c.id === activeTab)!
+  const currentCat = CATEGORIES.find((c) => c.id === activeTab) ?? CATEGORIES[0]
 
   return (
     <div>

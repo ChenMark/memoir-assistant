@@ -114,8 +114,8 @@ export default function AIInterview() {
         setCurrentDimension(dims[0].id)
         startInterview(dims[0].id)
       }
-    } catch (err: any) {
-      alert(`加载引导维度失败：${err.message}`)
+    } catch (err: unknown) {
+      alert(`加载引导维度失败：${err instanceof Error ? err.message : '未知错误'}`)
     }
   }
 
@@ -141,8 +141,8 @@ export default function AIInterview() {
       ])
       setPhase('interview')
       setStoryDraft('')
-    } catch (err: any) {
-      alert(`开始访谈失败：${err.message}`)
+    } catch (err: unknown) {
+      alert(`开始访谈失败：${err instanceof Error ? err.message : '未知错误'}`)
     } finally {
       setLoading(false)
     }
@@ -169,8 +169,8 @@ export default function AIInterview() {
       if (response.done) {
         handleGenerateStory(updatedMessages)
       }
-    } catch (err: any) {
-      alert(`发送消息失败：${err.message}`)
+    } catch (err: unknown) {
+      alert(`发送消息失败：${err instanceof Error ? err.message : '未知错误'}`)
     } finally {
       setLoading(false)
       inputRef.current?.focus()
@@ -194,8 +194,8 @@ export default function AIInterview() {
     try {
       const story = await generateStory(msgsToUse)
       setStoryDraft(story)
-    } catch (err: any) {
-      alert(`生成故事失败：${err.message}`)
+    } catch (err: unknown) {
+      alert(`生成故事失败：${err instanceof Error ? err.message : '未知错误'}`)
     } finally {
       setGenerating(false)
     }
@@ -249,8 +249,8 @@ export default function AIInterview() {
       if (!response.ok) throw new Error(data.error || '保存失败')
       alert('草稿已保存！')
       navigate('/drafts')
-    } catch (err: any) {
-      alert(`保存草稿失败：${err.message}`)
+    } catch (err: unknown) {
+      alert(`保存草稿失败：${err instanceof Error ? err.message : '未知错误'}`)
     }
   }
 
@@ -381,8 +381,8 @@ export default function AIInterview() {
       
       // 保存PDF
       doc.save(`回忆录_${new Date().toISOString().slice(0, 10)}.pdf`)
-    } catch (err: any) {
-      alert(`导出PDF失败: ${err.message}`)
+    } catch (err: unknown) {
+      alert(`导出PDF失败: ${err instanceof Error ? err.message : '未知错误'}`)
     }
   }
 

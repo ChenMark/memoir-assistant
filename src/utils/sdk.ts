@@ -423,7 +423,8 @@ export class MemoirSDK {
         const canvas = document.createElement('canvas')
         canvas.width = width
         canvas.height = height
-        const ctx = canvas.getContext('2d')!
+        const ctx = canvas.getContext('2d')
+        if (!ctx) { URL.revokeObjectURL(url); reject(new Error('Canvas 不可用')); return }
         ctx.drawImage(img, 0, 0, width, height)
         canvas.toBlob((blob) => {
           if (blob) resolve(blob)

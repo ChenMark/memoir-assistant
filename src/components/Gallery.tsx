@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { MemoirSDK, MemoirPhoto } from '../utils/sdk'
 
-function getSDK(): MemoirSDK {
-  return (window as any)._memoirSDK as MemoirSDK
+function getSDK(): MemoirSDK | null {
+  const sdk = (window as any)._memoirSDK
+  return sdk || null
 }
 
 interface UploadTask {
@@ -10,6 +11,7 @@ interface UploadTask {
   file: File
   progress: number
   status: 'pending' | 'compressing' | 'uploading' | 'syncing' | 'done' | 'error'
+  errorMessage?: string
   photo?: MemoirPhoto
 }
 
@@ -28,7 +30,9 @@ export default function Gallery() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   const loadPhotos = useCallback(() => {
-    setPhotos(getSDK().getPhotos().sort((a, b) => b.uploadedAt - a.uploadedAt))
+    const sdk = getSDK()
+    if (!sdk) return
+    setPhotos(sdk.getPhotos().sort((a, b) => b.uploadedAt - a.uploadedAt))
   }, [])
 
   useEffect(() => {
@@ -40,6 +44,7 @@ export default function Gallery() {
 
   const addFiles = async (files: FileList | File[]) => {
     const sdk = getSDK()
+    if (!sdk) return
     const newTasks: UploadTask[] = Array.from(files).map((file) => ({
       id: `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       file,
@@ -73,8 +78,9 @@ export default function Gallery() {
 
         updateTask({ status: 'done', progress: 100, photo })
       } catch (err) {
+        const message = err instanceof Error ? err.message : '上传失败'
         setTasks((prev) =>
-          prev.map((t) => (t.id === task.id ? { ...t, status: 'error', progress: 0 } : t)),
+          prev.map((t) => (t.id === task.id ? { ...t, status: 'error', progress: 0, errorMessage: message } : t)),
         )
       }
     }
@@ -104,7 +110,8 @@ export default function Gallery() {
 
   const handleDelete = (photo: MemoirPhoto) => {
     if (!confirm(`确定要删除「${photo.name}」吗？`)) return
-    const photos = getSDK().getPhotos().filter((p) => p.id !== photo.id)
+    const sdk = getSDK()
+    const photos = sdk ? sdk.getPhotos().filter((p) => p.id !== photo.id) : []
     localStorage.setItem('memoir_photos', JSON.stringify(photos))
     loadPhotos()
   }
@@ -132,24 +139,11 @@ export default function Gallery() {
 
   // 分享
   const handleShare = async (photo: MemoirPhoto) => {
-    if (!photo.galleryId) {
-      // 先尝试云端同步
-      try {
-        const sdk = getSDK()
-        const result = await sdk.uploadAndSync(
-          new File([], photo.name),
-          () => {},
-        )
-        if (result.galleryId) {
-          photo = { ...photo, galleryId: result.galleryId }
-        }
-      } catch {
-        // 无法同步，使用本地分享
-      }
-    }
-
     const token = localStorage.getItem('memoir_auth_token')
-    if (!token || !photo.galleryId) return
+    if (!token || !photo.galleryId) {
+      if (!photo.galleryId) console.warn('[Gallery] 照片未同步到云端，无法生成分享链接')
+      return
+    }
 
     try {
       const res = await fetch(`/api/memoir/gallery/${photo.galleryId}/share`, {
@@ -160,7 +154,9 @@ export default function Gallery() {
         const data = await res.json()
         setShareInfo(data)
       }
-    } catch {}
+    } catch (err) {
+      console.error('[Gallery] 分享失败:', err)
+    }
   }
 
   const handleCopyLink = () => {
@@ -184,7 +180,9 @@ export default function Gallery() {
         const data = await res.json()
         setComments(data.comments || [])
       }
-    } catch {} finally {
+    } catch (err) {
+      console.error('[Gallery] 加载评论失败:', err)
+    } finally {
       setLoadingComments(false)
     }
   }
@@ -208,7 +206,9 @@ export default function Gallery() {
         setComments((prev) => [...prev, data.comment])
         setCommentInput('')
       }
-    } catch {}
+    } catch (err) {
+      console.error('[Gallery] 评论失败:', err)
+    }
   }
 
   const filtered = filter
@@ -501,7 +501,16 @@ export default function Gallery() {
                     loading="lazy"
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none'
+                      const img = e.target as HTMLImageElement
+                      img.style.display = 'none'
+                      const parent = img.parentElement
+                      if (parent && !parent.querySelector('.img-fallback')) {
+                        const fallback = document.createElement('span')
+                        fallback.className = 'img-fallback'
+                        fallback.textContent = '🖼️'
+                        fallback.style.cssText = 'font-size:32px;opacity:0.3'
+                        parent.appendChild(fallback)
+                      }
                     }}
                   />
                 </div>
@@ -602,7 +611,7 @@ export default function Gallery() {
                   : comments.map(c => (
                     <div key={c.id} style={{ background: '#f8f9fa', borderRadius: 8, padding: '8px 10px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600 }}>{c.user.username}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>{c.user?.username ?? '匿名'}</span>
                         <span style={{ fontSize: 10, color: '#999' }}>{new Date(c.createdAt).toLocaleDateString('zh-CN')}</span>
                       </div>
                       <div style={{ fontSize: 13, lineHeight: 1.5 }}>{c.content}</div>
