@@ -39,7 +39,7 @@ export default function Dashboard() {
         const sdk = getSDK()
         const url = (sdk as any).storage?.backendUrl || (window as any)._memoirBackendUrl || ''
         if (!url) { setCloudStatus('offline'); return }
-        const res = await fetch(`${url.replace(/\/$/, '')}/health`, { method: 'GET', signal: AbortSignal.timeout(3000) })
+        const res = await fetch(`${url.replace(/\/$/, '')}/api/v1/health`, { method: 'GET', signal: AbortSignal.timeout(3000) })
         setCloudStatus(res.ok ? 'online' : 'offline')
       } catch {
         setCloudStatus('offline')

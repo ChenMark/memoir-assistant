@@ -233,7 +233,7 @@ export default function AIInterview() {
   const handleSaveDraft = async () => {
     try {
       const token = localStorage.getItem('memoir_auth_token')
-      const response = await fetch('/api/memoir/draft', {
+      const response = await fetch('/api/v1/memoir/draft', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -146,7 +146,7 @@ export default function Gallery() {
     }
 
     try {
-      const res = await fetch(`/api/memoir/gallery/${photo.galleryId}/share`, {
+      const res = await fetch(`/api/v1/memoir/gallery/${photo.galleryId}/share`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -173,7 +173,7 @@ export default function Gallery() {
     setLoadingComments(true)
     try {
       const token = localStorage.getItem('memoir_auth_token')
-      const res = await fetch(`/api/memoir/gallery/${photo.galleryId}/comments`, {
+      const res = await fetch(`/api/v1/memoir/gallery/${photo.galleryId}/comments`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
@@ -193,7 +193,7 @@ export default function Gallery() {
     if (!token) return
 
     try {
-      const res = await fetch(`/api/memoir/gallery/${previewPhoto.galleryId}/comments`, {
+      const res = await fetch(`/api/v1/memoir/gallery/${previewPhoto.galleryId}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

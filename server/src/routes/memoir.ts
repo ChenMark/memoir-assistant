@@ -1,9 +1,11 @@
 /**
  * 回忆录数据路由 — 回忆录 / 草稿 / 画廊的 CRUD（Prisma）
+ * v1.1.0: 新增分页支持
  */
 import { Router, Request, Response } from 'express'
 import { authMiddleware } from './auth.js'
 import { prisma } from '../lib/prisma.js'
+import { parsePagination, paginatedResponse } from '../lib/pagination.js'
 import {
   createMemoirSchema, updateMemoirSchema, saveDraftSchema,
   createGallerySchema,
@@ -44,15 +46,23 @@ interface Memoir {
   updatedAt: string
 }
 
-/** GET /memoir — 获取所有回忆录 */
+/** GET /memoir — 获取所有回忆录（支持分页） */
 router.get('/', async (req: Request, res: Response) => {
   try {
     const uid = userId(req)
-    const memoirs = await prisma.memoir.findMany({
-      where: { userId: uid },
-      orderBy: { date: 'desc' }
-    })
-    const result: Memoir[] = memoirs.map((m: any) => ({
+    const { page, limit, skip } = parsePagination(req.query.page, req.query.limit)
+
+    const [memoirs, total] = await Promise.all([
+      prisma.memoir.findMany({
+        where: { userId: uid },
+        orderBy: { date: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.memoir.count({ where: { userId: uid } }),
+    ])
+
+    const data: Memoir[] = memoirs.map((m: any) => ({
       id: m.id,
       userId: m.userId,
       title: m.title,
@@ -66,7 +76,8 @@ router.get('/', async (req: Request, res: Response) => {
       createdAt: m.createdAt.toISOString(),
       updatedAt: m.updatedAt.toISOString(),
     }))
-    res.json({ memoirs: result })
+
+    res.json(paginatedResponse(data, total, page, limit))
   } catch (err: any) {
     console.error('[memoir/]', err.message)
     res.status(500).json({ error: '获取回忆录失败' })
@@ -89,15 +100,23 @@ interface Draft {
   updatedAt: string
 }
 
-/** GET /memoir/draft — 获取所有草稿 */
+/** GET /memoir/draft — 获取所有草稿（支持分页） */
 router.get('/draft', async (req: Request, res: Response) => {
   try {
     const uid = userId(req)
-    const drafts = await prisma.draft.findMany({
-      where: { userId: uid },
-      orderBy: { updatedAt: 'desc' }
-    })
-    const result: Draft[] = drafts.map((d: any) => ({
+    const { page, limit, skip } = parsePagination(req.query.page, req.query.limit)
+
+    const [drafts, total] = await Promise.all([
+      prisma.draft.findMany({
+        where: { userId: uid },
+        orderBy: { updatedAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.draft.count({ where: { userId: uid } }),
+    ])
+
+    const data: Draft[] = drafts.map((d: any) => ({
       id: d.id,
       userId: d.userId,
       title: d.title,
@@ -109,7 +128,8 @@ router.get('/draft', async (req: Request, res: Response) => {
       createdAt: d.createdAt.toISOString(),
       updatedAt: d.updatedAt.toISOString(),
     }))
-    res.json({ drafts: result })
+
+    res.json(paginatedResponse(data, total, page, limit))
   } catch (err: any) {
     console.error('[draft/]', err.message)
     res.status(500).json({ error: '获取草稿失败' })
@@ -229,15 +249,23 @@ interface GalleryItem {
   createdAt: string
 }
 
-/** GET /memoir/gallery — 获取画廊列表 */
+/** GET /memoir/gallery — 获取画廊列表（支持分页） */
 router.get('/gallery', async (req: Request, res: Response) => {
   try {
     const uid = userId(req)
-    const items = await prisma.gallery.findMany({
-      where: { userId: uid },
-      orderBy: { date: 'desc' }
-    })
-    const result: GalleryItem[] = items.map((item: any) => ({
+    const { page, limit, skip } = parsePagination(req.query.page, req.query.limit)
+
+    const [items, total] = await Promise.all([
+      prisma.gallery.findMany({
+        where: { userId: uid },
+        orderBy: { date: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.gallery.count({ where: { userId: uid } }),
+    ])
+
+    const data: GalleryItem[] = items.map((item: any) => ({
       id: item.id,
       userId: item.userId,
       memoirId: item.memoirId || undefined,
@@ -247,7 +275,8 @@ router.get('/gallery', async (req: Request, res: Response) => {
       date: item.date,
       createdAt: item.createdAt.toISOString(),
     }))
-    res.json({ gallery: result })
+
+    res.json(paginatedResponse(data, total, page, limit))
   } catch (err: any) {
     console.error('[gallery]', err.message)
     res.status(500).json({ error: '获取画廊失败' })

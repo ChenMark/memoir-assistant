@@ -81,7 +81,7 @@ export class OSSStorageService {
   constructor(_config?: unknown) {}  // 未来扩展OSS配置
 
   async getUploadUrl(key: string, contentType: string = 'application/octet-stream'): Promise<string> {
-    const url = '/api/oss/sign'
+    const url = '/api/v1/oss/sign'
     const res = await authFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -125,7 +125,7 @@ export class OSSStorageService {
    * 获取 presigned GET URL（通过后端签名）
    */
   async getDownloadUrl(key: string): Promise<string> {
-    const url = '/api/oss/download'
+    const url = '/api/v1/oss/download'
     const res = await authFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -150,7 +150,7 @@ export class OSSStorageService {
    * 删除对象（通过后端）
    */
   async deleteObject(key: string): Promise<void> {
-    const url = '/api/oss/delete'
+    const url = '/api/v1/oss/delete'
     const res = await authFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -163,7 +163,7 @@ export class OSSStorageService {
    * 列出指定前缀的对象（通过后端）
    */
   async listObjects(prefix: string): Promise<string[]> {
-    const url = '/api/oss/list'
+    const url = '/api/v1/oss/list'
     const res = await authFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -299,7 +299,7 @@ export class TelecomAuthService {
    * 用授权码换 token（通过后端代理，避免前端暴露 secret）
    */
   async exchangeToken(code: string): Promise<any> {
-    const url = '/api/telecom/token'
+    const url = '/api/v1/telecom/token'
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -482,7 +482,7 @@ export class MemoirSDK {
     try {
       const token = localStorage.getItem('memoir_auth_token')
       if (token) {
-        const res = await fetch('/api/memoir/gallery', {
+        const res = await fetch('/api/v1/memoir/gallery', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

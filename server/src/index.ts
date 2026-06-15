@@ -1,15 +1,19 @@
 /**
  * 忆往昔回忆录助手 — 后端服务入口
+ * v1.1.0: 新增 /api/v1/ 版本前缀 + 分页支持
  * 
  * 路由结构：
- *   /health           健康检查
- *   /auth/*           认证（注册/登录/短信/第三方）
- *   /oss/*            OSS 操作（签名/下载/删除/列表）
- *   /memoir/*         回忆录 CRUD
- *   /memoir/draft/*   草稿管理
- *   /memoir/gallery/* 画廊管理
- *   /telecom/token    电信能力平台 Token 代理
- *   /friend/*         好友管理
+ *   /api/v1/health           健康检查
+ *   /api/v1/auth/*           认证（注册/登录/短信/第三方）
+ *   /api/v1/oss/*            OSS 操作（签名/下载/删除/列表）
+ *   /api/v1/memoir/*         回忆录 CRUD
+ *   /api/v1/memoir/draft/*   草稿管理
+ *   /api/v1/memoir/gallery/* 画廊管理
+ *   /api/v1/telecom/token    电信能力平台 Token 代理
+ *   /api/v1/friend/*         好友管理
+ *   /api/v1/hobby/*          爱好管理
+ *   /api/v1/ai/*             AI 功能
+ *   /api/v1/shared/photo/:token  公开分享访问
  * 环境变量（从 ../.env 读取）：
  *   OSS_ACCESS_KEY_ID / OSS_ACCESS_KEY_SECRET / OSS_BUCKET / OSS_REGION
  *   JWT_SECRET / BACKEND_PORT
@@ -39,6 +43,7 @@ import { errorHandler } from './middleware/errorHandler.js'
 
 const app = express()
 const PORT = process.env.BACKEND_PORT ? parseInt(process.env.BACKEND_PORT) : 3002
+const API_PREFIX = '/api/v1'
 
 // ============ 环境变量验证 ============
 function validateEnv() {
@@ -101,7 +106,7 @@ app.use(compression({
   threshold: 1024,        // 只压缩 >1KB 的响应
   filter: (req, _res) => {
     // 不压缩健康检查
-    if (req.path === '/health') return false
+    if (req.path === `${API_PREFIX}/health`) return false
     return compression.filter(req, _res)
   },
 }))
@@ -132,32 +137,31 @@ function bodySizeLimit(maxBytes: number) {
   }
 }
 
-// ============ 路由注册 ============
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', time: new Date().toISOString(), uptime: process.uptime() })
+// ============ 路由注册 (v1) ============
+app.get(`${API_PREFIX}/health`, (_req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString(), uptime: process.uptime(), version: '1.1.0' })
 })
 
 // Auth 路由：限制 10KB
-app.use('/auth', bodySizeLimit(10 * 1024), authRoutes)
+app.use(`${API_PREFIX}/auth`, bodySizeLimit(10 * 1024), authRoutes)
 // OSS 路由：限制 10KB
-app.use('/oss', authMiddleware, bodySizeLimit(10 * 1024), ossRoutes)
+app.use(`${API_PREFIX}/oss`, authMiddleware, bodySizeLimit(10 * 1024), ossRoutes)
 // Memoir 路由：限制 200KB (回忆录可能较长)
-app.use('/memoir', authMiddleware, bodySizeLimit(200 * 1024), memoirRoutes)
+app.use(`${API_PREFIX}/memoir`, authMiddleware, bodySizeLimit(200 * 1024), memoirRoutes)
 // AI 路由：限制 1MB (聊天消息数组)
-app.use('/ai', authMiddleware, bodySizeLimit(1 * 1024 * 1024), aiRoutes)
+app.use(`${API_PREFIX}/ai`, authMiddleware, bodySizeLimit(1 * 1024 * 1024), aiRoutes)
 // Friend 路由：限制 10KB
-app.use('/friend', authMiddleware, bodySizeLimit(10 * 1024), friendRoutes)
+app.use(`${API_PREFIX}/friend`, authMiddleware, bodySizeLimit(10 * 1024), friendRoutes)
+// Hobby 路由：限制 10KB
+app.use(`${API_PREFIX}/hobby`, authMiddleware, bodySizeLimit(10 * 1024), hobbyRoutes)
 
 // 画廊交互（评论+分享）：需要认证
-app.use('/memoir/gallery', authMiddleware, bodySizeLimit(10 * 1024), galleryInteractRoutes)
+app.use(`${API_PREFIX}/memoir/gallery`, authMiddleware, bodySizeLimit(10 * 1024), galleryInteractRoutes)
 // 公开分享访问：无需认证
-app.get('/shared/photo/:token', sharedPhotoHandler)
-
-// 爱好模块：认证 + 10KB
-app.use('/hobby', authMiddleware, bodySizeLimit(10 * 1024), hobbyRoutes)
+app.get(`${API_PREFIX}/shared/photo/:token`, sharedPhotoHandler)
 
 // ============ 电信能力平台 Token 交换 ============
-app.post('/telecom/token', async (req, res) => {
+app.post(`${API_PREFIX}/telecom/token`, async (req, res) => {
   try {
     const { code } = req.body
     if (!code) return res.status(400).json({ success: false, error: 'missing code' })
@@ -191,12 +195,14 @@ app.use(errorHandler)
 app.listen(PORT, () => {
   console.log('')
   console.log(`  ✅  忆往昔后端服务已启动：http://localhost:${PORT}`)
-  console.log(`  🩺  Health:    http://localhost:${PORT}/health`)
-  console.log(`  🔐  Auth:      http://localhost:${PORT}/auth/*`)
-  console.log(`  📦  OSS:       http://localhost:${PORT}/oss/*`)
-  console.log(`  📝  Memoir:    http://localhost:${PORT}/memoir/*`)
-  console.log(`  🤖  AI:        http://localhost:${PORT}/ai/*`)
-  console.log(`  📞  Telecom:   http://localhost:${PORT}/telecom/token`)
+  console.log(`  🩺  Health:    http://localhost:${PORT}${API_PREFIX}/health`)
+  console.log(`  🔐  Auth:      http://localhost:${PORT}${API_PREFIX}/auth/*`)
+  console.log(`  📦  OSS:       http://localhost:${PORT}${API_PREFIX}/oss/*`)
+  console.log(`  📝  Memoir:    http://localhost:${PORT}${API_PREFIX}/memoir/*`)
+  console.log(`  🤖  AI:        http://localhost:${PORT}${API_PREFIX}/ai/*`)
+  console.log(`  👥  Friend:    http://localhost:${PORT}${API_PREFIX}/friend/*`)
+  console.log(`  🎵  Hobby:     http://localhost:${PORT}${API_PREFIX}/hobby/*`)
+  console.log(`  📞  Telecom:   http://localhost:${PORT}${API_PREFIX}/telecom/token`)
   console.log('')
 })
 

@@ -4,6 +4,7 @@
 import { Router, Request, Response } from 'express'
 import { authMiddleware } from './auth.js'
 import { prisma } from '../lib/prisma.js'
+import { parsePagination, paginatedResponse } from '../lib/pagination.js'
 import { generateDownloadUrl } from '../lib/oss.js'
 import crypto from 'node:crypto'
 
@@ -16,17 +17,24 @@ function userId(req: Request): string {
 
 // ============ 评论 ============
 
-/** GET /gallery/:id/comments — 获取照片评论 */
+/** GET /gallery/:id/comments — 获取照片评论（支持分页） */
 router.get('/:id/comments', async (req: Request, res: Response) => {
   try {
-    const comments = await prisma.photoComment.findMany({
-      where: { galleryId: req.params.id },
-      orderBy: { createdAt: 'asc' },
-      include: {
-        user: { select: { id: true, username: true, avatar: true } },
-      },
-    })
-    res.json({ comments })
+    const { page, limit, skip } = parsePagination(req.query.page, req.query.limit)
+
+    const [comments, total] = await Promise.all([
+      prisma.photoComment.findMany({
+        where: { galleryId: req.params.id },
+        orderBy: { createdAt: 'asc' },
+        skip,
+        take: limit,
+        include: {
+          user: { select: { id: true, username: true, avatar: true } },
+        },
+      }),
+      prisma.photoComment.count({ where: { galleryId: req.params.id } }),
+    ])
+    res.json(paginatedResponse(comments, total, page, limit))
   } catch (err: any) {
     console.error('[gallery/comments]', err.message)
     res.status(500).json({ error: '获取评论失败' })

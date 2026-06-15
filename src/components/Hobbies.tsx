@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 
-const API = '/api/hobby'
+const API = '/api/v1/hobby'
 
 interface HobbyItem {
   id: string

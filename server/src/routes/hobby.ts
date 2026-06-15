@@ -4,6 +4,7 @@
 import { Router, Request, Response } from 'express'
 import { authMiddleware } from './auth.js'
 import { prisma } from '../lib/prisma.js'
+import { parsePagination, paginatedResponse } from '../lib/pagination.js'
 
 const router = Router()
 router.use(authMiddleware)
@@ -14,23 +15,29 @@ function userId(req: Request): string {
 
 const VALID_CATEGORIES = ['music', 'movie', 'sport', 'custom']
 
-/** GET /hobby — 获取所有爱好(按分类筛选) */
+/** GET /hobby — 获取所有爱好(按分类筛选，支持分页) */
 router.get('/', async (req: Request, res: Response) => {
   try {
     const uid = userId(req)
+    const { page, limit, skip } = parsePagination(req.query.page, req.query.limit)
     const { category } = req.query
     const where: any = { userId: uid }
     if (category && VALID_CATEGORIES.includes(category as string)) {
       where.category = category
     }
-    const hobbies = await prisma.hobby.findMany({
-      where, orderBy: { createdAt: 'desc' },
-    })
-    const result = hobbies.map((h) => ({
+
+    const [hobbies, total] = await Promise.all([
+      prisma.hobby.findMany({
+        where, orderBy: { createdAt: 'desc' }, skip, take: limit,
+      }),
+      prisma.hobby.count({ where }),
+    ])
+
+    const data = hobbies.map((h) => ({
       ...h,
       tags: JSON.parse(h.tags || '[]'),
     }))
-    res.json({ hobbies: result })
+    res.json(paginatedResponse(data, total, page, limit))
   } catch (err: any) {
     console.error('[hobby]', err.message)
     res.status(500).json({ error: '获取爱好列表失败' })

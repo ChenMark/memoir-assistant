@@ -50,8 +50,12 @@ function getApiUrl(): string {
 
 function apiFetch(path: string, options?: RequestInit): Promise<Response> {
   const apiUrl = getApiUrl()
-  const url = `${apiUrl.replace(/\/$/, '')}${path}`
-  return fetch(url, options)
+  if (apiUrl) {
+    const url = `${apiUrl.replace(/\/$/, '')}${path}`
+    return fetch(url, options)
+  }
+  // 开发模式通过 Vite proxy 转发
+  return fetch(path, options)
 }
 
 // ============ Provider ============
@@ -91,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const verifyAndRefresh = async (token: string) => {
     try {
-      const res = await apiFetch('/auth/me', {
+      const res = await apiFetch('/api/v1/auth/me', {
         headers: { Authorization: `Bearer ${token}` },
         signal: AbortSignal.timeout(5000),
       })
@@ -113,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     setState(prev => ({ ...prev, loading: true, error: null }))
     try {
-      const res = await apiFetch('/auth/login', {
+      const res = await apiFetch('/api/v1/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ account: email, password }),
@@ -133,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const body: any = { username, email, password }
       if (phone) body.phone = phone
-      const res = await apiFetch('/auth/register', {
+      const res = await apiFetch('/api/v1/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -150,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ============ 发送短信验证码 ============
   const sendSMSCode = useCallback(async (phone: string): Promise<{ success: boolean; waitSeconds?: number }> => {
     try {
-      const res = await apiFetch('/auth/send-sms', {
+      const res = await apiFetch('/api/v1/auth/send-sms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone }),
@@ -173,7 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const body: any = { phone, code }
       if (username) body.username = username
-      const res = await apiFetch('/auth/phone-login', {
+      const res = await apiFetch('/api/v1/auth/phone-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -192,7 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState(prev => ({ ...prev, loading: true, error: null }))
     try {
       // Step 1: 获取微信授权配置
-      const configRes = await apiFetch('/auth/wechat-auth')
+      const configRes = await apiFetch('/api/v1/auth/wechat-auth')
       const config = await configRes.json()
 
       if (config.demo) {
@@ -216,7 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const qqLogin = useCallback(async () => {
     setState(prev => ({ ...prev, loading: true, error: null }))
     try {
-      const configRes = await apiFetch('/auth/qq-auth')
+      const configRes = await apiFetch('/api/v1/auth/qq-auth')
       const config = await configRes.json()
 
       if (config.demo) {
@@ -240,7 +244,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const handleOAuthCallback = useCallback(async (code: string, provider: 'wechat' | 'qq') => {
     setState(prev => ({ ...prev, loading: true, error: null }))
     try {
-      const endpoint = provider === 'wechat' ? '/auth/wechat-auth' : '/auth/qq-auth'
+      const endpoint = provider === 'wechat' ? '/api/v1/auth/wechat-auth' : '/api/v1/auth/qq-auth'
       const res = await apiFetch(`${endpoint}?code=${encodeURIComponent(code)}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || `${provider}登录失败`)

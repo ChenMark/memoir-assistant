@@ -1,8 +1,8 @@
-# 忆往昔回忆录助手 - API 文档
+# 忆往昔回忆录助手 - API 文档 (v1)
 
 ## 基础信息
 
-- **Base URL**: `http://localhost:3002` (开发环境)
+- **Base URL**: `http://localhost:3002/api/v1` (开发环境)
 - **认证方式**: Bearer Token (JWT)
 - **Content-Type**: `application/json`
 
@@ -13,7 +13,7 @@
 Authorization: Bearer <token>
 ```
 
-获取token：通过 `/auth/register` 或 `/auth/login` 接口。
+获取token：通过 `/api/v1/auth/register` 或 `/api/v1/auth/login` 接口。
 
 ---
 
@@ -31,7 +31,7 @@ Authorization: Bearer <token>
 
 ## 健康检查
 
-### GET /health
+### GET /api/v1/health
 
 检查服务是否正常运行。
 
@@ -48,7 +48,7 @@ Authorization: Bearer <token>
 
 ## 认证接口
 
-### POST /auth/register
+### POST /api/v1/auth/register
 
 注册新用户。
 
@@ -81,7 +81,7 @@ Authorization: Bearer <token>
 }
 ```
 
-### POST /auth/login
+### POST /api/v1/auth/login
 
 用户登录。
 
@@ -95,13 +95,13 @@ Authorization: Bearer <token>
 
 **响应示例:** 同注册接口
 
-### GET /auth/me
+### GET /api/v1/auth/me
 
 获取当前登录用户信息（需要认证）。
 
 **响应示例:** 同注册接口
 
-### POST /auth/send-sms
+### POST /api/v1/auth/send-sms
 
 发送短信验证码。
 
@@ -120,7 +120,7 @@ Authorization: Bearer <token>
 }
 ```
 
-### POST /auth/phone-login
+### POST /api/v1/auth/phone-login
 
 手机号验证码登录。
 
@@ -134,7 +134,7 @@ Authorization: Bearer <token>
 
 **响应示例:** 同注册接口
 
-### GET /auth/wechat-auth
+### GET /api/v1/auth/wechat-auth
 
 获取微信登录授权URL。
 
@@ -145,7 +145,7 @@ Authorization: Bearer <token>
 }
 ```
 
-### GET /auth/qq-auth
+### GET /api/v1/auth/qq-auth
 
 获取QQ登录授权URL。
 
@@ -157,7 +157,7 @@ Authorization: Bearer <token>
 
 所有OSS接口需要认证。
 
-### POST /oss/sign
+### POST /api/v1/oss/sign
 
 获取OSS上传签名。
 
@@ -179,21 +179,24 @@ Authorization: Bearer <token>
 }
 ```
 
-### GET /oss/list
+### GET /api/v1/oss/list
 
 列出OSS文件列表。
 
 **查询参数:**
 - `prefix`: 文件前缀（可选）
+- `page`: 页码（从1开始，可选）
+- `limit`: 每页数量（默认20，可选）
 
 **响应示例:**
 ```json
 {
-  "files": [...]
+  "data": [...],
+  "pagination": { "page": 1, "limit": 20, "total": 50, "totalPages": 3 }
 }
 ```
 
-### DELETE /oss/delete
+### DELETE /api/v1/oss/delete
 
 删除OSS文件。
 
@@ -217,14 +220,18 @@ Authorization: Bearer <token>
 
 所有回忆录接口需要认证。
 
-### GET /memoir
+### GET /api/v1/memoir
 
-获取所有回忆录。
+获取所有回忆录（支持分页）。
+
+**查询参数:**
+- `page`: 页码（从1开始，可选）
+- `limit`: 每页数量（默认20，可选）
 
 **响应示例:**
 ```json
 {
-  "memoirs": [
+  "data": [
     {
       "id": "...",
       "title": "...",
@@ -238,17 +245,23 @@ Authorization: Bearer <token>
       "createdAt": "2026-06-13T04:18:52.340Z",
       "updatedAt": "2026-06-13T04:18:52.340Z"
     }
-  ]
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 100,
+    "totalPages": 5
+  }
 }
 ```
 
-### GET /memoir/:id
+### GET /api/v1/memoir/:id
 
 获取单个回忆录详情。
 
 **响应示例:** 同获取所有回忆录（单个对象）
 
-### POST /memoir
+### POST /api/v1/memoir
 
 创建新回忆录。
 
@@ -267,7 +280,7 @@ Authorization: Bearer <token>
 
 **响应示例:** 同获取单个回忆录
 
-### PUT /memoir/:id
+### PUT /api/v1/memoir/:id
 
 更新回忆录。
 
@@ -275,7 +288,7 @@ Authorization: Bearer <token>
 
 **响应示例:** 同获取单个回忆录
 
-### DELETE /memoir/:id
+### DELETE /api/v1/memoir/:id
 
 删除回忆录。
 
@@ -286,14 +299,18 @@ Authorization: Bearer <token>
 }
 ```
 
-### GET /memoir/draft
+### GET /api/v1/memoir/draft
 
-获取所有草稿。
+获取所有草稿（支持分页）。
+
+**查询参数:**
+- `page`: 页码（从1开始，可选）
+- `limit`: 每页数量（默认20，可选）
 
 **响应示例:**
 ```json
 {
-  "drafts": [
+  "data": [
     {
       "id": "...",
       "title": "...",
@@ -305,11 +322,12 @@ Authorization: Bearer <token>
       "createdAt": "2026-06-13T04:18:52.340Z",
       "updatedAt": "2026-06-13T04:18:52.340Z"
     }
-  ]
+  ],
+  "pagination": { "page": 1, "limit": 20, "total": 10, "totalPages": 1 }
 }
 ```
 
-### POST /memoir/draft
+### POST /api/v1/memoir/draft
 
 保存草稿（更新或创建）。
 
@@ -328,7 +346,7 @@ Authorization: Bearer <token>
 
 **响应示例:** 同获取所有草稿（单个对象）
 
-### DELETE /memoir/draft/:id
+### DELETE /api/v1/memoir/draft/:id
 
 删除草稿。
 
@@ -339,14 +357,18 @@ Authorization: Bearer <token>
 }
 ```
 
-### GET /memoir/gallery
+### GET /api/v1/memoir/gallery
 
-获取画廊列表。
+获取画廊列表（支持分页）。
+
+**查询参数:**
+- `page`: 页码（从1开始，可选）
+- `limit`: 每页数量（默认20，可选）
 
 **响应示例:**
 ```json
 {
-  "gallery": [
+  "data": [
     {
       "id": "...",
       "memoirId": "...",
@@ -356,11 +378,12 @@ Authorization: Bearer <token>
       "date": "2026-06-13",
       "createdAt": "2026-06-13T04:18:52.340Z"
     }
-  ]
+  ],
+  "pagination": { "page": 1, "limit": 20, "total": 30, "totalPages": 2 }
 }
 ```
 
-### POST /memoir/gallery
+### POST /api/v1/memoir/gallery
 
 添加画廊图片。
 
@@ -377,7 +400,7 @@ Authorization: Bearer <token>
 
 **响应示例:** 同获取画廊列表（单个对象）
 
-### DELETE /memoir/gallery/:id
+### DELETE /api/v1/memoir/gallery/:id
 
 删除画廊图片。
 
@@ -394,17 +417,19 @@ Authorization: Bearer <token>
 
 所有好友接口需要认证。
 
-### GET /friend
+### GET /api/v1/friend
 
-获取所有好友（可按category过滤）。
+获取所有好友（支持分页 + 按category过滤）。
 
 **查询参数:**
-- `category`: 好友分类 (`family` | `class_mate` | `friend`)
+- `category`: 好友分类 (`family` | `class_mate` | `friend`)（可选）
+- `page`: 页码（从1开始，可选）
+- `limit`: 每页数量（默认20，可选）
 
 **响应示例:**
 ```json
 {
-  "friends": [
+  "data": [
     {
       "id": "...",
       "name": "好友姓名",
@@ -424,17 +449,18 @@ Authorization: Bearer <token>
       "createdAt": "2026-06-13T04:18:52.340Z",
       "updatedAt": "2026-06-13T04:18:52.340Z"
     }
-  ]
+  ],
+  "pagination": { "page": 1, "limit": 20, "total": 45, "totalPages": 3 }
 }
 ```
 
-### GET /friend/:id
+### GET /api/v1/friend/:id
 
 获取单个好友详情。
 
 **响应示例:** 同获取所有好友（单个对象）
 
-### POST /friend
+### POST /api/v1/friend
 
 添加好友。
 
@@ -465,7 +491,7 @@ Authorization: Bearer <token>
 
 **响应示例:** 同获取单个好友
 
-### PUT /friend/:id
+### PUT /api/v1/friend/:id
 
 更新好友信息。
 
@@ -473,7 +499,7 @@ Authorization: Bearer <token>
 
 **响应示例:** 同获取单个好友
 
-### DELETE /friend/:id
+### DELETE /api/v1/friend/:id
 
 删除好友。
 
@@ -490,7 +516,7 @@ Authorization: Bearer <token>
 
 所有AI接口需要认证。
 
-### POST /ai/interview
+### POST /api/v1/ai/interview
 
 AI采访生成回忆录内容。
 
@@ -513,7 +539,7 @@ AI采访生成回忆录内容。
 
 ## 电信平台接口
 
-### POST /telecom/token
+### POST /api/v1/telecom/token
 
 交换电信平台Token。
 
@@ -560,11 +586,11 @@ AI采访生成回忆录内容。
 
 ---
 
-## 分页（待实现）
+## 分页
 
-部分列表接口支持分页，通过查询参数：
-- `page`: 页码（从1开始）
-- `limit`: 每页数量
+所有列表接口支持分页，通过查询参数：
+- `page`: 页码（从1开始，默认1）
+- `limit`: 每页数量（默认20，最大100）
 
 **分页响应格式:**
 ```json
@@ -583,4 +609,5 @@ AI采访生成回忆录内容。
 
 ## 版本历史
 
+- **v1.1.0** (2026-06-15): 全部路由添加 `/api/v1/` 前缀；所有列表接口实现分页支持
 - **v1.0.0** (2026-06-13): 初始API文档

@@ -4,6 +4,7 @@
 import { Router, Request, Response } from 'express'
 import { authMiddleware } from './auth.js'
 import { prisma } from '../lib/prisma.js'
+import { parsePagination, paginatedResponse } from '../lib/pagination.js'
 import crypto from 'node:crypto'
 import { createFriendSchema, updateFriendSchema } from '../validators/friend.validator.js'
 
@@ -42,16 +43,28 @@ interface Friend {
   tags?: string[]  // 标签，如工作单位、兴趣组等
 }
 
-// ============ GET /friend — 获取所有好友 ============
+// ============ GET /friend — 获取所有好友（支持分页 + 按category筛选）============
 router.get('/', async (req: Request, res: Response) => {
   try {
     const uid = userId(req)
-    const friends = await prisma.friend.findMany({
-      where: { userId: uid },
-      orderBy: { addedAt: 'desc' }
-    })
+    const { page, limit, skip } = parsePagination(req.query.page, req.query.limit)
+    const category = req.query.category as string | undefined
+    const where: any = { userId: uid }
+    if (category && ['family', 'class_mate', 'friend'].includes(category)) {
+      where.category = category
+    }
+
+    const [friends, total] = await Promise.all([
+      prisma.friend.findMany({
+        where,
+        orderBy: { addedAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.friend.count({ where }),
+    ])
     
-    const result: Friend[] = friends.map((f: any) => ({
+    const data: Friend[] = friends.map((f: any) => ({
       id: f.id,
       name: f.name,
       avatar: f.avatar || undefined,
@@ -69,7 +82,7 @@ router.get('/', async (req: Request, res: Response) => {
       tags: JSON.parse(f.tags || '[]'),
     }))
     
-    res.json({ friends: result })
+    res.json(paginatedResponse(data, total, page, limit))
   } catch (err: any) {
     console.error('[friend/]', err.message)
     res.status(500).json({ error: '获取好友失败' })

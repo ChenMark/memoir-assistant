@@ -137,12 +137,12 @@ export default function Settings() {
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
             <div>API 端点已通过 Vercel Functions 部署：</div>
             <div style={{ fontFamily: 'monospace', background: 'var(--bg)', padding: '8px 12px', borderRadius: 6, marginTop: 8, fontSize: 12 }}>
-              GET  /api/health{'\n'}
-              POST /api/oss/sign{'\n'}
-              POST /api/oss/download{'\n'}
-              POST /api/oss/delete{'\n'}
-              POST /api/oss/list{'\n'}
-              POST /api/telecom/token
+              GET  /api/v1/health{'\n'}
+              POST /api/v1/oss/sign{'\n'}
+              POST /api/v1/oss/download{'\n'}
+              POST /api/v1/oss/delete{'\n'}
+              POST /api/v1/oss/list{'\n'}
+              POST /api/v1/telecom/token
             </div>
             <div style={{ marginTop: 8 }}>请在 Vercel 后台设置以下环境变量：</div>
             <div style={{ fontFamily: 'monospace', background: 'var(--bg)', padding: '8px 12px', borderRadius: 6, marginTop: 4, fontSize: 12 }}>
