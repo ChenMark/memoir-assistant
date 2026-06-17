@@ -45,7 +45,7 @@ import { sanitizeInput } from './middleware/sanitize.js'
 import { errorHandler } from './middleware/errorHandler.js'
 
 const app = express()
-const PORT = process.env.BACKEND_PORT ? parseInt(process.env.BACKEND_PORT) : 3002
+const PORT = process.env.BACKEND_PORT ? parseInt(process.env.BACKEND_PORT) : 3000
 const API_PREFIX = '/api/v1'
 
 // ============ 环境变量验证 ============

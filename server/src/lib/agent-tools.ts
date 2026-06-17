@@ -4,6 +4,7 @@
  */
 import { prisma } from './prisma.js'
 import { generateDownloadUrl } from './oss.js'
+import { semanticSearch } from './semantic-search.js'
 
 export interface AgentTool {
   name: string
@@ -302,6 +303,49 @@ export const agentTools: AgentTool[] = [
         `🖼️ 照片: ${photoCount} 张`,
         `👥 亲友: ${friendCount} 人`,
         `❤️ 爱好: ${hobbyCount} 条`,
+      ].join('\n')
+    },
+  },
+
+  // ============ 搜索工具 ============
+  {
+    name: 'smart_search',
+    description: '全局智能搜索。用户说"找关于童年的"或"奶奶的照片"时调用。搜索回忆录、照片、爱好、亲友。',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: '搜索关键词或自然语言查询' },
+      },
+      required: ['query'],
+    },
+    async handler(args, userId) {
+      const results = await semanticSearch(userId, args.query as string)
+      if (results.length === 0) return `未找到与「${args.query}」相关的内容`
+      return results.map((r, i) => {
+        const icon = { memoir: '📝', photo: '🖼️', hobby: '❤️', friend: '👤' }[r.type]
+        return `${i + 1}. ${icon} [${r.type}] ${r.title}\n   ${r.snippet}`
+      }).join('\n\n')
+    },
+  },
+
+  // ============ 活跃度工具 ============
+  {
+    name: 'get_recent_activity',
+    description: '获取用户最近活动摘要。用于主动建议"您这周拍了3张照片，要写故事吗？"',
+    parameters: { type: 'object', properties: {} },
+    async handler(_args, userId) {
+      const now = new Date()
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      const [recentMemoirs, recentPhotos, recentSessions] = await Promise.all([
+        prisma.memoir.count({ where: { userId, createdAt: { gte: weekAgo } } }),
+        prisma.gallery.count({ where: { userId, createdAt: { gte: weekAgo } } }),
+        prisma.captureSession.count({ where: { userId, createdAt: { gte: weekAgo } } }),
+      ])
+      return [
+        `📅 过去7天活动：`,
+        `  回忆录: ${recentMemoirs} 篇`,
+        `  照片: ${recentPhotos} 张`,
+        `  采集会话: ${recentSessions} 次`,
       ].join('\n')
     },
   },

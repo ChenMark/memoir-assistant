@@ -51,32 +51,32 @@ echo ""
 echo "--- A. Auth 模块验证 ---"
 
 run_test "A1 - register 缺少username" \
-  "POST" "/auth/register" \
+  "POST" "/api/v1/auth/register" \
   '{"email":"a@b.com","password":"123456"}' \
   "error"
 
 run_test "A2 - register email格式无效" \
-  "POST" "/auth/register" \
+  "POST" "/api/v1/auth/register" \
   '{"username":"test","email":"bad","password":"123456"}' \
   "邮箱格式不正确"
 
 run_test "A3 - login 密码为空" \
-  "POST" "/auth/login" \
+  "POST" "/api/v1/auth/login" \
   '{"account":"test","password":""}' \
   "密码不能为空"
 
 run_test "A4 - login 账号为空" \
-  "POST" "/auth/login" \
+  "POST" "/api/v1/auth/login" \
   '{"account":"","password":"123456"}' \
   "账号不能为空"
 
 run_test "A5 - send-sms 手机号无效" \
-  "POST" "/auth/send-sms" \
+  "POST" "/api/v1/auth/send-sms" \
   '{"phone":"12345"}' \
   "手机号格式不正确"
 
 run_test "A6 - send-sms 手机号有效(格式正确)" \
-  "POST" "/auth/send-sms" \
+  "POST" "/api/v1/auth/send-sms" \
   '{"phone":"13800138000"}' \
   "验证码"
 
@@ -157,37 +157,37 @@ echo ""
 echo "--- D. Friend 模块验证 ---"
 
 run_test "D1 - POST /friend 未认证" \
-  "POST" "/friend" \
+  "POST" "/api/v1/friend" \
   '{"name":"张三","category":"friend"}' \
   "未登录"
 
 if [ -n "$TOKEN" ]; then
   run_test "D2 - create friend 缺少姓名" \
-    "POST" "/friend" \
+    "POST" "/api/v1/friend" \
     '{"category":"friend"}' \
     "姓名不能为空" \
     "$TOKEN"
 
   run_test "D3 - create friend 无效分类" \
-    "POST" "/friend" \
+    "POST" "/api/v1/friend" \
     '{"name":"李四","category":"colleague"}' \
     "error" \
     "$TOKEN"
 
   run_test "D4 - create friend 辈分超出范围" \
-    "POST" "/friend" \
+    "POST" "/api/v1/friend" \
     '{"name":"王五","category":"family","generation":15}' \
     "辈分最大为10" \
     "$TOKEN"
 
   run_test "D5 - create friend 毕业年份格式错误" \
-    "POST" "/friend" \
+    "POST" "/api/v1/friend" \
     '{"name":"同学A","category":"class_mate","graduationYear":"二〇二〇"}' \
     "毕业年份" \
     "$TOKEN"
 
   run_test "D6 - create friend 正常创建" \
-    "POST" "/friend" \
+    "POST" "/api/v1/friend" \
     '{"name":"测试好友","category":"friend"}' \
     '"friend"' \
     "$TOKEN"
@@ -201,25 +201,25 @@ echo "--- E. Draft & Gallery 模块验证 ---"
 
 if [ -n "$TOKEN" ]; then
   run_test "E1 - save draft 标题超长" \
-    "POST" "/memoir/draft" \
+    "POST" "/api/v1/memoir/draft" \
     "{\"title\":\"$(printf 'x%.0s' $(seq 1 250))\",\"content\":\"draft content\"}" \
     "最多200" \
     "$TOKEN"
 
   run_test "E2 - save draft 正常保存" \
-    "POST" "/memoir/draft" \
+    "POST" "/api/v1/memoir/draft" \
     '{"title":"草稿测试","content":"这是草稿内容","tags":["草稿"]}' \
     '"draft"' \
     "$TOKEN"
 
   run_test "E3 - create gallery 缺少图片地址" \
-    "POST" "/memoir/gallery" \
+    "POST" "/api/v1/memoir/gallery" \
     '{"caption":"测试图片","date":"2026-06-13"}' \
     "图片地址" \
     "$TOKEN"
 
   run_test "E4 - create gallery 正常创建" \
-    "POST" "/memoir/gallery" \
+    "POST" "/api/v1/memoir/gallery" \
     '{"ossKey":"uploads/2026/test.jpg","caption":"测试图片","date":"2026-06-13","tags":["照片"]}' \
     '"item"' \
     "$TOKEN"
@@ -232,31 +232,31 @@ echo ""
 echo "--- F. OSS 模块验证 ---"
 
 run_test "F1 - POST /oss/sign 未认证" \
-  "POST" "/oss/sign" \
+  "POST" "/api/v1/oss/sign" \
   '{"key":"test.jpg"}' \
   "未登录"
 
 if [ -n "$TOKEN" ]; then
   run_test "F2 - oss/sign 缺少key" \
-    "POST" "/oss/sign" \
+    "POST" "/api/v1/oss/sign" \
     '{"contentType":"image/jpeg"}' \
     "文件路径" \
     "$TOKEN"
 
   run_test "F3 - oss/download 缺少key" \
-    "POST" "/oss/download" \
+    "POST" "/api/v1/oss/download" \
     '{}' \
     "文件路径" \
     "$TOKEN"
 
   run_test "F4 - oss/delete 缺少key" \
-    "POST" "/oss/delete" \
+    "POST" "/api/v1/oss/delete" \
     '{}' \
     "文件路径" \
     "$TOKEN"
 
   run_test "F5 - oss/list 缺少prefix" \
-    "POST" "/oss/list" \
+    "POST" "/api/v1/oss/list" \
     '{}' \
     "前缀" \
     "$TOKEN"
@@ -269,43 +269,43 @@ echo ""
 echo "--- G. AI 模块验证 ---"
 
 run_test "G1 - POST /ai/chat 未认证" \
-  "POST" "/ai/chat" \
+  "POST" "/api/v1/ai/chat" \
   '{"messages":[{"role":"user","content":"hello"}],"dimensionId":"test"}' \
   "未登录"
 
 if [ -n "$TOKEN" ]; then
   run_test "G2 - ai/chat 缺少messages" \
-    "POST" "/ai/chat" \
+    "POST" "/api/v1/ai/chat" \
     '{"dimensionId":"childhood"}' \
     "messages" \
     "$TOKEN"
 
   run_test "G3 - ai/chat 缺少dimensionId" \
-    "POST" "/ai/chat" \
+    "POST" "/api/v1/ai/chat" \
     '{"messages":[{"role":"user","content":"hello"}]}' \
     "dimensionId" \
     "$TOKEN"
 
   run_test "G4 - ai/chat 空消息数组" \
-    "POST" "/ai/chat" \
+    "POST" "/api/v1/ai/chat" \
     '{"messages":[],"dimensionId":"childhood"}' \
     "至少需要1条" \
     "$TOKEN"
 
   run_test "G5 - ai/chat 无效角色" \
-    "POST" "/ai/chat" \
+    "POST" "/api/v1/ai/chat" \
     '{"messages":[{"role":"bot","content":"hello"}],"dimensionId":"childhood"}' \
     "system/user/assistant" \
     "$TOKEN"
 
   run_test "G6 - ai/generate-story 空消息" \
-    "POST" "/ai/generate-story" \
+    "POST" "/api/v1/ai/generate-story" \
     '{"messages":[]}' \
     "至少需要1条" \
     "$TOKEN"
 
   run_test "G7 - ai/dimensions 正常请求" \
-    "GET" "/ai/dimensions" \
+    "GET" "/api/v1/ai/dimensions" \
     '{}' \
     '"success":true' \
     "$TOKEN"
@@ -318,22 +318,22 @@ echo ""
 echo "--- H. 边界条件测试 ---"
 
 run_test "H1 - register 用户名过短(<2)" \
-  "POST" "/auth/register" \
+  "POST" "/api/v1/auth/register" \
   '{"username":"a","email":"a@b.com","password":"123456"}' \
   "至少2"
 
 run_test "H2 - register 密码过短(<6)" \
-  "POST" "/auth/register" \
+  "POST" "/api/v1/auth/register" \
   '{"username":"test2","email":"t2@b.com","password":"12345"}' \
   "至少6"
 
 run_test "H3 - phone-login 缺少验证码" \
-  "POST" "/auth/phone-login" \
+  "POST" "/api/v1/auth/phone-login" \
   '{"phone":"13800138000"}' \
   "验证码不能为空"
 
 run_test "H4 - 不存在的路由" \
-  "POST" "/auth/nonexistent" \
+  "POST" "/api/v1/auth/nonexistent" \
   '{}' \
   "接口不存在"
 
@@ -343,43 +343,43 @@ run_test "H4 - 不存在的路由" \
 echo "--- I. 爱好模块验证 ---"
 
 run_test "I1 - GET /hobby 未认证" \
-  "GET" "/hobby" \
+  "GET" "/api/v1/hobby" \
   '{}' \
   "未登录"
 
 if [ -n "$TOKEN" ]; then
   run_test "I2 - 添加金曲" \
-    "POST" "/hobby" \
+    "POST" "/api/v1/hobby" \
     '{"category":"music","title":"Yesterday","year":"1965","rating":5}' \
     '"hobby"' \
     "$TOKEN"
 
   run_test "I3 - 添加电影" \
-    "POST" "/hobby" \
+    "POST" "/api/v1/hobby" \
     '{"category":"movie","title":"肖申克的救赎","year":"1994","rating":5}' \
     '"hobby"' \
     "$TOKEN"
 
   run_test "I4 - 无效分类拒绝" \
-    "POST" "/hobby" \
+    "POST" "/api/v1/hobby" \
     '{"category":"invalid","title":"test"}' \
     "分类无效" \
     "$TOKEN"
 
   run_test "I5 - 缺少标题拒绝" \
-    "POST" "/hobby" \
+    "POST" "/api/v1/hobby" \
     '{"category":"music"}' \
     "不能为空" \
     "$TOKEN"
 
   run_test "I6 - 按分类获取" \
-    "GET" "/hobby?category=music" \
+    "GET" "/api/v1/hobby?category=music" \
     '{}' \
     '"hobbies"' \
     "$TOKEN"
 
   run_test "I7 - 获取全部爱好" \
-    "GET" "/hobby" \
+    "GET" "/api/v1/hobby" \
     '{}' \
     '"hobbies"' \
     "$TOKEN"
@@ -401,19 +401,19 @@ if [ -n "$TOKEN" ]; then
 
   if [ -n "$GALLERY_ID" ]; then
     run_test "J1 - 添加评论" \
-      "POST" "/memoir/gallery/$GALLERY_ID/comments" \
+      "POST" "/api/v1/memoir/gallery/$GALLERY_ID/comments" \
       '{"content":"这张照片拍得真好！"}' \
       '"comment"' \
       "$TOKEN"
 
     run_test "J2 - 获取评论列表" \
-      "GET" "/memoir/gallery/$GALLERY_ID/comments" \
+      "GET" "/api/v1/memoir/gallery/$GALLERY_ID/comments" \
       '{}' \
       '"comments"' \
       "$TOKEN"
 
     run_test "J3 - 生成分享链接" \
-      "POST" "/memoir/gallery/$GALLERY_ID/share" \
+      "POST" "/api/v1/memoir/gallery/$GALLERY_ID/share" \
       '{}' \
       '"shareToken"' \
       "$TOKEN"
