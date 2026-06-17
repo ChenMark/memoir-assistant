@@ -13,6 +13,32 @@ import Hobbies from './components/Hobbies'
 import CameraCapture from './components/CameraCapture'
 import AgentChat from './components/AgentChat'
 import UpdateBanner from './components/UpdateBanner'
+import {
+  IconHome, IconMemoir, IconGallery, IconFamily, IconHobby,
+  IconMusic, IconMovie, IconInterview, IconAgent, IconCamera,
+  IconSettings, IconSparkle, type IconProps,
+} from './components/icons'
+
+// 图标名称 → 组件映射
+const ICONS: Record<string, (p: IconProps) => JSX.Element> = {
+  home: IconHome,
+  memoir: IconMemoir,
+  gallery: IconGallery,
+  family: IconFamily,
+  hobby: IconHobby,
+  music: IconMusic,
+  movie: IconMovie,
+  interview: IconInterview,
+  agent: IconAgent,
+  camera: IconCamera,
+  settings: IconSettings,
+  sparkle: IconSparkle,
+}
+
+const NavIcon = ({ name, size = 22 }: { name: string; size?: number }) => {
+  const C = ICONS[name]
+  return C ? <C size={size} /> : null
+}
 import { useUpdateChecker } from './hooks/useUpdateChecker'
 import { createSDK, MemoirSDK } from './utils/sdk'
 
@@ -29,23 +55,23 @@ window._memoirSDK = sdk
 window._memoirBackendUrl = ''  // 使用相对路径 /api/，无需指定域名
 
 const navItems = [
-  { path: '/', label: '首页', icon: '' },
-  { path: '/drafts', label: '草稿', icon: '' },
-  { path: '/gallery', label: '相册', icon: '🖼️' },
-  { path: '/friends', label: '亲友', icon: '' },
+  { path: '/', label: '首页', icon: 'home' },
+  { path: '/drafts', label: '草稿', icon: 'memoir' },
+  { path: '/gallery', label: '相册', icon: 'gallery' },
+  { path: '/friends', label: '亲友', icon: 'family' },
   {
-    label: '爱好', icon: '❤️',
+    label: '爱好', icon: 'hobby',
     children: [
-      { path: '/hobbies?tab=music', label: '金曲', icon: '🎵' },
-      { path: '/hobbies?tab=movie', label: '电影', icon: '🎬' },
-      { path: '/hobbies?tab=sport', label: '比赛', icon: '🏆' },
-      { path: '/hobbies?tab=custom', label: '自定义', icon: '✨' },
+      { path: '/hobbies?tab=music', label: '金曲', icon: 'music' },
+      { path: '/hobbies?tab=movie', label: '电影', icon: 'movie' },
+      { path: '/hobbies?tab=sport', label: '比赛', icon: 'sparkle' },
+      { path: '/hobbies?tab=custom', label: '自定义', icon: 'sparkle' },
     ],
   },
-  { path: '/ai', label: 'AI访谈', icon: '🤖' },
-  { path: '/agent', label: 'Agent', icon: '🤖' },
-  { path: '/capture', label: '照片录入', icon: '📷' },
-  { path: '/settings', label: '设置', icon: '⚙️' },
+  { path: '/ai', label: 'AI访谈', icon: 'interview' },
+  { path: '/agent', label: 'Agent', icon: 'agent' },
+  { path: '/capture', label: '照片录入', icon: 'camera' },
+  { path: '/settings', label: '设置', icon: 'settings' },
 ]
 
 // ============ 路由守卫 ============
@@ -196,7 +222,9 @@ function AppLayout() {
                       transition: 'all 0.15s',
                     }}
                   >
-                    <span style={{ fontSize: 18 }}>{item.icon}</span>
+                    <span style={{ display: 'inline-flex', color: isExpanded ? 'var(--primary)' : 'var(--text-secondary)' }}>
+                      <NavIcon name={item.icon} size={20} />
+                    </span>
                     {item.label}
                     <span style={{ marginLeft: 'auto', fontSize: 10, transition: 'transform 0.2s', transform: isExpanded ? 'rotate(90deg)' : 'none' }}>▶</span>
                   </div>
@@ -220,7 +248,9 @@ function AppLayout() {
                               textDecoration: 'none', transition: 'all 0.15s',
                             })}
                           >
-                            <span style={{ fontSize: 15 }}>{child.icon}</span>
+                            <span style={{ display: 'inline-flex' }}>
+                              <NavIcon name={child.icon} size={16} />
+                            </span>
                             {child.label}
                           </NavLink>
                       ))}
@@ -243,7 +273,9 @@ function AppLayout() {
                   textDecoration: 'none', transition: 'all 0.15s',
                 })}
               >
-                <span style={{ fontSize: 18 }}>{item.icon}</span>
+                <span style={{ display: 'inline-flex' }}>
+                  <NavIcon name={item.icon} size={20} />
+                </span>
                 {item.label}
               </NavLink>
             )
