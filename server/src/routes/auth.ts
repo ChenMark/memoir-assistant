@@ -8,6 +8,7 @@ import {
   createUser, createUserByPhone, getOrCreateWechatUser, getOrCreateQQUser,
   verifyPassword, generateToken, verifyToken, sanitizeUser, updateUser,
   generateSMSCode, canSendSMS, storeSMSCode, verifySMSCode, sendSMS,
+  changeUserPassword, deleteUser,
 } from '../lib/auth.js'
 import {
   registerSchema, loginSchema, sendSMSSchema, phoneLoginSchema, updateUserSchema,
@@ -378,5 +379,48 @@ router.get('/qq-auth', async (req: Request, res: Response) => {
 
 // ============ GET /auth/qq/callback — QQ 回调 ============
 router.get('/qq/callback', handleQQCallback)
+
+// ============ POST /auth/change-password — 修改密码 ============
+router.post('/change-password', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { old_password, new_password } = req.body
+    if (!old_password || !new_password) {
+      return res.status(400).json({ error: '请提供旧密码和新密码' })
+    }
+    if (new_password.length < 8) {
+      return res.status(400).json({ error: '新密码至少需要8位' })
+    }
+
+    const userId = (req as any).userId
+    const success = await changeUserPassword(userId, old_password, new_password)
+    if (!success) {
+      return res.status(400).json({ error: '旧密码不正确' })
+    }
+    res.json({ success: true, message: '密码修改成功' })
+  } catch (err: any) {
+    console.error('[auth/change-password]', err.message)
+    res.status(500).json({ error: '修改密码失败，请稍后重试' })
+  }
+})
+
+// ============ POST /auth/delete-account — 注销账号 ============
+router.post('/delete-account', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { password } = req.body
+    if (!password) {
+      return res.status(400).json({ error: '请提供密码确认' })
+    }
+
+    const userId = (req as any).userId
+    const success = await deleteUser(userId, password)
+    if (!success) {
+      return res.status(400).json({ error: '密码不正确' })
+    }
+    res.json({ success: true, message: '账号已注销' })
+  } catch (err: any) {
+    console.error('[auth/delete-account]', err.message)
+    res.status(500).json({ error: '注销失败，请稍后重试' })
+  }
+})
 
 export default router

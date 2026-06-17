@@ -304,6 +304,25 @@ export async function updateUser(userId: string, updates: Partial<Pick<User,
   }
 }
 
+/** 修改密码 — 先验证旧密码，再更新 */
+export async function changeUserPassword(userId: string, oldPassword: string, newPassword: string): Promise<boolean> {
+  const user = await findUserById(userId)
+  if (!user) return false
+  if (!verifyPassword(oldPassword, user.passwordHash, user.salt)) return false
+  const { hash, salt } = hashPassword(newPassword)
+  await updateUser(userId, { passwordHash: hash, salt })
+  return true
+}
+
+/** 删除用户（需先验证密码） */
+export async function deleteUser(userId: string, password: string): Promise<boolean> {
+  const user = await findUserById(userId)
+  if (!user) return false
+  if (!verifyPassword(password, user.passwordHash, user.salt)) return false
+  await prisma.user.delete({ where: { id: userId } })
+  return true
+}
+
 /** 脱敏：去除密码字段 */
 export function sanitizeUser(user: User): Omit<User, 'passwordHash' | 'salt'> {
   const { passwordHash, salt, ...safe } = user
