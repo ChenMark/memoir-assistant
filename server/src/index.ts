@@ -39,6 +39,7 @@ import galleryInteractRoutes, { sharedPhotoHandler } from './routes/gallery-inte
 import hobbyRoutes from './routes/hobby.js'
 import versionRoutes from './routes/version.js'
 import captureRoutes from './routes/capture.js'
+import agentRoutes from './routes/agent.js'
 import { requestLogger } from './middleware/requestLogger.js'
 import { sanitizeInput } from './middleware/sanitize.js'
 import { errorHandler } from './middleware/errorHandler.js'
@@ -159,6 +160,9 @@ app.use(`${API_PREFIX}/hobby`, authMiddleware, bodySizeLimit(10 * 1024), hobbyRo
 
 // 采集会话（摄像头拍照/录像）：认证 + 100KB（含base64缩略图元数据）
 app.use(`${API_PREFIX}/capture`, authMiddleware, bodySizeLimit(100 * 1024), captureRoutes)
+
+// Agent 对话：认证 + 50KB
+app.use(`${API_PREFIX}/agent`, authMiddleware, bodySizeLimit(50 * 1024), agentRoutes)
 
 // 画廊交互（评论+分享）：需要认证
 app.use(`${API_PREFIX}/memoir/gallery`, authMiddleware, bodySizeLimit(10 * 1024), galleryInteractRoutes)
