@@ -10,6 +10,8 @@ import Login from './components/Login'
 import UserManagement from './components/UserManagement'
 import AIInterview from './components/AIInterview'
 import Hobbies from './components/Hobbies'
+import UpdateBanner from './components/UpdateBanner'
+import { useUpdateChecker } from './hooks/useUpdateChecker'
 import { createSDK, MemoirSDK } from './utils/sdk'
 
 const sdk: MemoirSDK = createSDK({})
@@ -69,6 +71,9 @@ function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set())
 
+  // OTA 在线更新检查
+  const update = useUpdateChecker()
+
   // 全局快捷键：Ctrl+S 保存当前草稿
   useLayoutEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -89,7 +94,17 @@ function AppLayout() {
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
+    <>
+      {/* OTA 更新提示 */}
+      {update.updateAvailable && (
+        <UpdateBanner
+          remoteVersion={update.remoteVersion}
+          forceUpdate={update.forceUpdate}
+          onDismiss={update.dismiss}
+          onApply={update.applyUpdate}
+        />
+      )}
+      <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -312,6 +327,7 @@ function AppLayout() {
         </div>
       </main>
     </div>
+    </>
   )
 }
 

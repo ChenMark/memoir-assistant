@@ -37,6 +37,7 @@ import aiRoutes from './routes/ai.js'
 import friendRoutes from './routes/friend.js'
 import galleryInteractRoutes, { sharedPhotoHandler } from './routes/gallery-interact.js'
 import hobbyRoutes from './routes/hobby.js'
+import versionRoutes from './routes/version.js'
 import { requestLogger } from './middleware/requestLogger.js'
 import { sanitizeInput } from './middleware/sanitize.js'
 import { errorHandler } from './middleware/errorHandler.js'
@@ -159,6 +160,9 @@ app.use(`${API_PREFIX}/hobby`, authMiddleware, bodySizeLimit(10 * 1024), hobbyRo
 app.use(`${API_PREFIX}/memoir/gallery`, authMiddleware, bodySizeLimit(10 * 1024), galleryInteractRoutes)
 // 公开分享访问：无需认证
 app.get(`${API_PREFIX}/shared/photo/:token`, sharedPhotoHandler)
+
+// 版本信息（无需认证，供 OTA 检查）
+app.use('/api', versionRoutes)
 
 // ============ 电信能力平台 Token 交换 ============
 app.post(`${API_PREFIX}/telecom/token`, async (req, res) => {
