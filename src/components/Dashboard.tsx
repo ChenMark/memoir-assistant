@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MemoirSDK } from '../utils/sdk'
+import AgentSuggestions from './AgentSuggestions'
 
 function getSDK(): MemoirSDK {
   return (window as any)._memoirSDK as MemoirSDK
@@ -155,6 +156,8 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      <AgentSuggestions />
     </div>
   )
 }

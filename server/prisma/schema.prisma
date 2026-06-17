@@ -35,6 +35,7 @@ model User {
   comments       PhotoComment[]
   hobbies        Hobby[]
   captures       CaptureSession[]
+  conversations  AgentConversation[]
   
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -195,4 +196,19 @@ model CaptureSession {
 
   @@index([userId, date])
   @@map("capture_sessions")
+}
+
+// ============ AgentConversation ============
+model AgentConversation {
+  id        String   @id @default(cuid())
+  userId    String
+  messages  String   // JSON: [{role, content, toolCalls?}]
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, updatedAt])
+  @@map("agent_conversations")
 }
