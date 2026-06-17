@@ -53,14 +53,19 @@ export const agentTools: AgentTool[] = [
       required: ['title', 'content', 'date'],
     },
     async handler(args, userId) {
+      // HIGH-5: 严格校验 tags 为字符串数组
+      const rawTags = args.tags
+      const safeTags: string[] = Array.isArray(rawTags)
+        ? rawTags.filter((t): t is string => typeof t === 'string')
+        : []
       const memoir = await prisma.memoir.create({
         data: {
           userId,
-          title: args.title as string,
-          content: args.content as string,
-          date: args.date as string,
-          tags: JSON.stringify(args.tags || []),
-          mood: (args.mood as string) || null,
+          title: String(args.title || '').trim(),
+          content: String(args.content || '').trim(),
+          date: String(args.date || new Date().toISOString().slice(0, 10)),
+          tags: JSON.stringify(safeTags),
+          mood: args.mood ? String(args.mood) : null,
           media: '[]',
         },
       })
@@ -367,14 +372,33 @@ export function toolsToOpenAIFunctions() {
 
 /**
  * 根据名称查找并执行工具
+ * HIGH-4: 增强参数解析健壮性 — 区分 LLM 参数错误 vs 工具内部错误
  */
 export async function executeTool(name: string, args: string, userId: string): Promise<string> {
   const tool = agentTools.find((t) => t.name === name)
   if (!tool) return `未知工具: ${name}`
+
+  // 解析参数：兼容 string / object / null / undefined
+  let parsedArgs: Record<string, unknown> = {}
+  if (args == null || args === '') {
+    parsedArgs = {}
+  } else if (typeof args === 'object') {
+    parsedArgs = args as Record<string, unknown>
+  } else if (typeof args === 'string') {
+    try {
+      const v = JSON.parse(args)
+      parsedArgs = typeof v === 'object' && v !== null ? v : {}
+    } catch (err) {
+      return `工具 ${name} 参数解析失败：AI 返回了非 JSON 格式的参数 (${(args as string).substring(0, 50)})`
+    }
+  } else {
+    return `工具 ${name} 参数类型错误: ${typeof args}`
+  }
+
   try {
-    const parsedArgs = typeof args === 'string' ? JSON.parse(args) : args
     return await tool.handler(parsedArgs, userId)
   } catch (err) {
-    return `工具执行失败: ${(err as Error).message}`
+    console.error(`[agent-tool] ${name} 执行异常:`, err)
+    return `工具 ${name} 执行失败: ${(err as Error).message}`
   }
 }

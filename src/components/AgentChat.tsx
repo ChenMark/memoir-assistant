@@ -24,6 +24,31 @@ export default function AgentChat() {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
+  // 保存 conversationId 用于跨轮次记忆
+  const conversationIdRef = useRef<string | undefined>(undefined)
+
+  // 首次挂载时尝试加载最近一次对话
+  useEffect(() => {
+    const token = localStorage.getItem('memoir_auth_token')
+    if (!token) return
+    fetch('/api/v1/agent/history', { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.conversation) {
+          conversationIdRef.current = d.conversation.id
+          const restored: ChatBubble[] = d.conversation.messages
+            .filter((m: any) => m.role === 'user' || m.role === 'assistant')
+            .map((m: any, i: number) => ({
+              id: `r_${i}`,
+              role: m.role === 'assistant' ? 'agent' : 'user',
+              content: m.content || '',
+            }))
+          setMessages([{ id: 'welcome', role: 'agent', content: WELCOME_MSG }, ...restored])
+        }
+      })
+      .catch(() => {})
+  }, [])
+
   // 加载工具列表
   useEffect(() => {
     const token = localStorage.getItem('memoir_auth_token')
@@ -32,6 +57,10 @@ export default function AgentChat() {
       .then((d) => setTools(d.tools || []))
       .catch(() => {})
   }, [])
+
+  // MEDIUM-13: 用 ref 追踪最新 messages，避免回调依赖整个数组
+  const messagesRef = useRef(messages)
+  useEffect(() => { messagesRef.current = messages }, [messages])
 
   const sendMessage = useCallback(async () => {
     const text = input.trim()
@@ -45,16 +74,34 @@ export default function AgentChat() {
 
     try {
       const token = localStorage.getItem('memoir_auth_token')
-      const history = messages
+      // MEDIUM-14: 保留完整历史结构（role + content + tool_call_id）
+      const history = messagesRef.current
         .filter((m) => m.role !== 'tool')
         .slice(-10)
-        .map((m) => ({ role: m.role === 'agent' ? 'assistant' : 'user', content: m.content }))
+        .map((m) => ({
+          role: (m.role === 'agent' ? 'assistant' : 'user') as 'assistant' | 'user',
+          content: m.content,
+        }))
 
       const res = await fetch('/api/v1/agent/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ messages: [...history, { role: 'user', content: text }] }),
+        body: JSON.stringify({
+          messages: [...history, { role: 'user', content: text }],
+          conversationId: conversationIdRef.current,
+        }),
       })
+
+      if (res.status === 429) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === agentBubble.id
+              ? { ...m, content: '⏳ 请求过于频繁，请稍等一分钟再试' }
+              : m,
+          ),
+        )
+        return
+      }
 
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No stream')
@@ -99,6 +146,9 @@ export default function AgentChat() {
                   m.id === agentBubble.id ? { ...m, content: `❌ ${event.content}` } : m,
                 ),
               )
+            } else if (event.type === 'meta' && event.conversationId) {
+              // HIGH-3: 持久化 conversationId
+              conversationIdRef.current = event.conversationId as string
             }
           } catch {}
         }
@@ -114,7 +164,7 @@ export default function AgentChat() {
     } finally {
       setLoading(false)
     }
-  }, [input, loading, messages])
+  }, [input, loading])
 
   return (
     <div style={{ maxWidth: 600, margin: '0 auto', padding: '16px 0' }}>

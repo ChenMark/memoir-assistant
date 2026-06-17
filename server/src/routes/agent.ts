@@ -1,14 +1,30 @@
 /**
- * Agent 对话路由 — SSE 流式 + Function Calling + 对话记忆
+ * Agent 路由 — SSE 流式 + Function Calling + 对话记忆
  * 兼容 OpenAI Chat Completions API
  */
 import { Router, Request, Response } from 'express'
-import { authMiddleware } from './auth.js'
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit'
 import { toolsToOpenAIFunctions, executeTool } from '../lib/agent-tools.js'
 import { getConversation, saveConversation } from '../lib/conversation-store.js'
 
+// 注意：authMiddleware 在 index.ts 已挂载，此处不重复
 const router = Router()
-router.use(authMiddleware)
+
+// HIGH-1: Agent 专用限流器（防资损 + 防 DoS）
+// AI 请求按 token 计费，每用户每分钟 10 次
+const agentLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: 'AI 对话过于频繁，请稍后再试' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // 使用 IP keyGenerator helper（兼容 IPv6）
+  keyGenerator: (req) => {
+    const uid = (req as any).userId
+    return uid ? `user:${uid}` : `ip:${ipKeyGenerator(req.ip || '')}`
+  },
+})
+router.use(agentLimiter)
 
 function userId(req: Request): string {
   return (req as any).userId as string
@@ -20,7 +36,7 @@ const MODEL = process.env.AI_MODEL || 'gpt-4o-mini'
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'tool'
-  content: string
+  content: string | null
   tool_call_id?: string
   tool_calls?: Array<{
     id: string
@@ -58,7 +74,11 @@ router.post('/chat', async (req: Request, res: Response) => {
 
   // 加载历史对话（最近 3 轮）
   const history = await getConversation(uid, conversationId)
-  const savedCid = history?.id
+  // HIGH-3: 保留 existingCid 用于后续 saveConversation
+  // - 有 conversationId 但找不到 → 当作新会话（create）
+  // - 有 conversationId 且找到 → 复用 update
+  // - 无 conversationId → 取最近一条，没有则新创建
+  const existingCid: string | undefined = history?.id
 
   // SSE headers
   res.setHeader('Content-Type', 'text/event-stream')
@@ -67,17 +87,22 @@ router.post('/chat', async (req: Request, res: Response) => {
   res.setHeader('X-Accel-Buffering', 'no')
 
   const send = (data: Record<string, unknown>) => res.write(`data: ${JSON.stringify(data)}\n\n`)
-  send({ type: 'meta', conversationId: savedCid })
+
+  // HIGH-3: 用变量追踪本次会话的最终 ID，新会话结束后会有值
+  let finalCid: string | undefined = existingCid
+  send({ type: 'meta', conversationId: finalCid })
 
   try {
     const fullMessages: ChatMessage[] = [
       { role: 'system', content: SYSTEM_PROMPT },
-      ...((history?.messages || []).slice(-6) as ChatMessage[]),  // 最近3轮对话
+      ...((history?.messages || []) as ChatMessage[]).slice(-6),  // 最近3轮对话
       ...messages.slice(-10),
     ]
 
     // ===== Agent 循环：最多 5 轮 tool calling =====
     let round = 0
+    let finalAssistantContent: string | null = null
+
     while (round < 5) {
       round++
 
@@ -91,7 +116,7 @@ router.post('/chat', async (req: Request, res: Response) => {
           model: MODEL,
           messages: fullMessages,
           tools: toolsToOpenAIFunctions(),
-          tool_choice: round === 1 ? 'auto' : 'auto',
+          tool_choice: 'auto',
           stream: false,
           max_tokens: 1000,
         }),
@@ -115,43 +140,72 @@ router.post('/chat', async (req: Request, res: Response) => {
 
       // 有 tool calls → 执行工具
       if (msg.tool_calls?.length) {
-        for (const tc of msg.tool_calls) {
-          send({
-            type: 'tool_call',
-            name: tc.function.name,
-            arguments: tc.function.arguments,
-          })
+        // HIGH-2: 完整推回 assistant 消息（包含 tool_calls 字段）
+        // OpenAI 协议要求下一轮对话中 assistant 消息必须带 tool_calls
+        fullMessages.push({
+          role: 'assistant',
+          content: msg.content || null,
+          tool_calls: msg.tool_calls,
+        })
 
-          const result = await executeTool(
-            tc.function.name,
-            tc.function.arguments,
-            uid,
-          )
+        // HIGH-8: 并行执行所有 tool_calls
+        const toolExecutions = await Promise.all(
+          msg.tool_calls.map(async (tc: NonNullable<typeof msg.tool_calls>[number]) => {
+            send({
+              type: 'tool_call',
+              name: tc.function.name,
+              arguments: tc.function.arguments,
+            })
 
-          fullMessages.push({ role: 'assistant', content: '', tool_calls: [tc] })
+            const result = await executeTool(
+              tc.function.name,
+              tc.function.arguments,
+              uid,
+            )
+
+            send({ type: 'tool_result', name: tc.function.name, content: result })
+
+            return { tc, result }
+          }),
+        )
+
+        // 把工具结果推入上下文（顺序：每个 tc 对应一个 tool message）
+        for (const { tc, result } of toolExecutions) {
           fullMessages.push({
             role: 'tool',
             tool_call_id: tc.id,
             content: result,
           })
-
-          send({ type: 'tool_result', name: tc.function.name, content: result })
         }
         continue // 继续循环，让 AI 基于工具结果回复
       }
 
       // 最终文本回复
-      const finalContent = msg.content || ''
-      send({ type: 'text', content: finalContent })
-      
-      // 保存对话记忆
-      fullMessages.push({ role: 'assistant', content: finalContent })
-      saveConversation(uid, savedCid, fullMessages.slice(1)).catch(() => {})
+      finalAssistantContent = msg.content || ''
+      send({ type: 'text', content: finalAssistantContent })
+
+      // 保存到上下文，供后续 saveConversation
+      fullMessages.push({ role: 'assistant', content: finalAssistantContent })
       break
     }
 
     if (round >= 5) {
       send({ type: 'text', content: '（处理步骤较多，如果需要继续请告诉我）' })
+    }
+
+    // HIGH-3: 保存对话记忆（await 而不是 fire-and-forget，确保 ID 回传）
+    if (finalAssistantContent !== null || fullMessages.some((m) => m.role === 'tool')) {
+      try {
+        const persistedCid = await saveConversation(
+          uid,
+          existingCid,
+          fullMessages.slice(1) as any,  // 去掉 system 提示
+        )
+        finalCid = persistedCid
+        send({ type: 'meta', conversationId: finalCid })
+      } catch (err) {
+        console.error('[agent] saveConversation failed:', err)
+      }
     }
   } catch (err) {
     send({ type: 'error', content: `Agent 异常: ${(err as Error).message}` })
@@ -161,7 +215,7 @@ router.post('/chat', async (req: Request, res: Response) => {
   res.end()
 })
 
-/** GET /agent/history/:id? — 加载历史对话 */
+/** GET /agent/history — 加载历史对话 */
 router.get('/history', async (req: Request, res: Response) => {
   try {
     const uid = userId(req)
@@ -173,7 +227,7 @@ router.get('/history', async (req: Request, res: Response) => {
   }
 })
 
-/** POST /agent/tools — 获取可用工具列表（供前端展示） */
+/** GET /agent/tools — 获取可用工具列表（供前端展示） */
 router.get('/tools', (_req: Request, res: Response) => {
   const tools = toolsToOpenAIFunctions()
   const simplified = tools.map((t) => ({

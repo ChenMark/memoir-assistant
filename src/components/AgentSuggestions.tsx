@@ -3,6 +3,7 @@
  * 根据用户数据主动生成提示
  */
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 interface Stats {
   memoirCount: number
@@ -17,6 +18,7 @@ interface Suggestion {
 }
 
 export default function AgentSuggestions() {
+  const navigate = useNavigate()
   const [stats, setStats] = useState<Stats | null>(null)
   const [visible, setVisible] = useState(true)
 
@@ -66,7 +68,7 @@ export default function AgentSuggestions() {
         {suggestions.map((s, i) => (
           <button
             key={i}
-            onClick={() => { window.location.href = s.action }}
+            onClick={() => navigate(s.action)}
             style={{
               padding: '10px 16px',
               background: 'rgba(255,255,255,0.15)',

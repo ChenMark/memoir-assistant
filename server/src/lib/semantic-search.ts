@@ -14,11 +14,36 @@ export interface SearchResult {
 }
 
 /**
+ * 关键词提取 — 支持中文/英文混合查询
+ * 中文按字符切分（无空格），英文按空格切分
+ */
+function tokenize(query: string): string[] {
+  const tokens: string[] = []
+  // 1) 提取英文/数字单词
+  const enMatches = query.toLowerCase().match(/[a-z0-9]+/g) || []
+  tokens.push(...enMatches)
+  // 2) 提取连续中文字符（按2字/3字/单字切分）
+  const cnMatches = query.match(/[\u4e00-\u9fa5]+/g) || []
+  for (const cn of cnMatches) {
+    if (cn.length <= 2) {
+      tokens.push(cn)
+    } else {
+      // 滑窗切分：2字+单字
+      for (let i = 0; i < cn.length - 1; i++) tokens.push(cn.substring(i, i + 2))
+      for (let i = 0; i < cn.length; i++) tokens.push(cn[i])
+    }
+  }
+  // 3) 去重
+  return Array.from(new Set(tokens.filter((t) => t.length > 0)))
+}
+
+/**
  * 全局语义搜索 — 同时搜索回忆录、照片、爱好、亲友
+ * MEDIUM-12: 使用中文分词替代 split(/\s+/)
  */
 export async function semanticSearch(userId: string, query: string): Promise<SearchResult[]> {
   const results: SearchResult[] = []
-  const keywords = query.toLowerCase().split(/\s+/).filter((k) => k.length > 0)
+  const keywords = tokenize(query)
 
   if (keywords.length === 0) return []
 
