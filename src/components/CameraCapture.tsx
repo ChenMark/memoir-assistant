@@ -3,7 +3,7 @@
  * 支持拍照(10张) / 录像(60秒) + 实时语音转文字
  * 适配 Android 平板横屏双栏
  */
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useCamera } from '../hooks/useCamera'
 import { useSpeechCapture } from '../hooks/useSpeechCapture'
 import { useDevice } from '../hooks/useDevice'
@@ -14,7 +14,10 @@ export default function CameraCapture({ onClose }: { onClose: () => void }) {
   const cam = useCamera()
   const speech = useSpeechCapture()
   const device = useDevice()
-  const isTablet = device.type === 'tablet' || device.type === 'tablet-small'
+  const isTablet = useMemo(
+    () => device.type === 'tablet' || device.type === 'tablet-small',
+    [device.type]
+  )
   const [mode, setMode] = useState<Mode>('idle')
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')

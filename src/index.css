@@ -143,20 +143,17 @@
   --text-tertiary: var(--neutral-500);
   --border: var(--neutral-200);
   --border-strong: var(--neutral-300);
-  --success: var(--success);
-  --warning: var(--warning);
   --danger: var(--error);
   --radius: 12px;
   --shadow: var(--shadow-sm);
-  --shadow-lg: var(--shadow-lg);
 }
 
 /* ============ 暗色模式（自动适配） ============ */
 @media (prefers-color-scheme: dark) {
   :root {
-    --neutral-0:   #1A1A1F;
-    --neutral-50:  #15151A;
-    --neutral-100: #1F1F25;
+    --neutral-0:   #232328;  /* 卡片背景：稍亮，与页面形成层次 */
+    --neutral-50:  #15151A;  /* 页面背景：深 */
+    --neutral-100: #2A2A30;
     --neutral-200: #2A2A30;
     --neutral-300: #3A3A42;
     --neutral-400: #58585F;

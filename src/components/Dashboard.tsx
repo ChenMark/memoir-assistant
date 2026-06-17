@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MemoirSDK } from '../utils/sdk'
 import AgentSuggestions from './AgentSuggestions'
@@ -11,7 +11,10 @@ function getSDK(): MemoirSDK {
 export default function Dashboard() {
   const navigate = useNavigate()
   const device = useDevice()
-  const isTablet = device.type === 'tablet' || device.type === 'tablet-small'
+  const isTablet = useMemo(
+    () => device.type === 'tablet' || device.type === 'tablet-small',
+    [device.type]
+  )
   const [stats, setStats] = useState({ draftCount: 0, photoCount: 0, friendCount: 0, totalWords: 0, lastEdited: 0 })
   const [recentDrafts, setRecentDrafts] = useState<any[]>([])
   const [cloudStatus, setCloudStatus] = useState<'checking' | 'online' | 'offline'>('checking')

@@ -92,19 +92,24 @@ export function useDevice(): DeviceInfo {
 
   useEffect(() => {
     const handler = () => {
-      const w = window.innerWidth
-      const h = window.innerHeight
-      setInfo({
-        type: detectType(w, h, 'ontouchstart' in window),
-        width: w,
-        height: h,
-        isAndroid,
-        isHarmonyOS,
-        hasTouch: 'ontouchstart' in window,
-        isLandscape: w > h,
-        pixelRatio: window.devicePixelRatio || 1,
-      })
+    const w = window.innerWidth
+    const h = window.innerHeight
+    const next = {
+      type: detectType(w, h, 'ontouchstart' in window),
+      width: w,
+      height: h,
+      isAndroid,
+      isHarmonyOS,
+      hasTouch: 'ontouchstart' in window,
+      isLandscape: w > h,
+      pixelRatio: window.devicePixelRatio || 1,
     }
+    // 仅在设备类型变化或宽度变化 > 100px 时更新，避免连续 resize 触发重渲染
+    setInfo((prev) => {
+      if (prev.type === next.type && Math.abs(prev.width - w) < 100) return prev
+      return next
+    })
+  }
     window.addEventListener('resize', handler)
     window.addEventListener('orientationchange', handler)
     return () => {

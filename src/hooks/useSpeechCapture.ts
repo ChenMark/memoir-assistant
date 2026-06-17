@@ -53,35 +53,9 @@ export function useSpeechCapture() {
     setError('浏览器语音识别不可用，将使用服务端识别（需上传音频）')
   }, [])
 
-  // 探测：尝试启动一次，3 秒后若无 result，标记为不可用
-  const probeRecognition = useCallback((): Promise<boolean> => {
-    if (!SpeechRecognitionAPI) return Promise.resolve(false)
-    return new Promise((resolve) => {
-      try {
-        const r = new SpeechRecognitionAPI()
-        r.lang = 'zh-CN'
-        r.continuous = false
-        r.interimResults = false
-        let resolved = false
-        const done = (ok: boolean) => {
-          if (resolved) return
-          resolved = true
-          try { r.abort() } catch {}
-          resolve(ok)
-        }
-        r.onresult = () => done(true)
-        r.onerror = (e: any) => {
-          if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-            done(false)
-          }
-        }
-        setTimeout(() => done(false), 2500)
-        r.start()
-      } catch {
-        resolve(false)
-      }
-    })
-  }, [])
+  // 注意：不在 mount 时主动探测（会触发麦克风权限弹窗）
+  // 改为：用户首次点开始录音时启动 native
+  // 若 2.5s 内无 result，或 onerror 收到 not-allowed → fallbackToServer
 
   const startListening = useCallback(() => {
     if (mode === 'none' || !SpeechRecognitionAPI) return

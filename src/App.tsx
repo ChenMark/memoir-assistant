@@ -1,4 +1,4 @@
-import { useState, useLayoutEffect, useCallback } from 'react'
+import { useState, useLayoutEffect, useCallback, memo } from 'react'
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Dashboard from './components/Dashboard'
@@ -19,8 +19,8 @@ import {
   IconSettings, IconSparkle, type IconProps,
 } from './components/icons'
 
-// 图标名称 → 组件映射
-const ICONS: Record<string, (p: IconProps) => JSX.Element> = {
+// 图标名称 → 组件映射（用 React.ComponentType 兼容 memo 包装）
+const ICONS: Record<string, React.ComponentType<IconProps>> = {
   home: IconHome,
   memoir: IconMemoir,
   gallery: IconGallery,
@@ -35,10 +35,10 @@ const ICONS: Record<string, (p: IconProps) => JSX.Element> = {
   sparkle: IconSparkle,
 }
 
-const NavIcon = ({ name, size = 22 }: { name: string; size?: number }) => {
+const NavIcon = memo(({ name, size = 22 }: { name: string; size?: number }) => {
   const C = ICONS[name]
   return C ? <C size={size} /> : null
-}
+})
 import { useUpdateChecker } from './hooks/useUpdateChecker'
 import { createSDK, MemoirSDK } from './utils/sdk'
 
