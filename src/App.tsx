@@ -10,6 +10,7 @@ import Login from './components/Login'
 import UserManagement from './components/UserManagement'
 import AIInterview from './components/AIInterview'
 import Hobbies from './components/Hobbies'
+import CameraCapture from './components/CameraCapture'
 import UpdateBanner from './components/UpdateBanner'
 import { useUpdateChecker } from './hooks/useUpdateChecker'
 import { createSDK, MemoirSDK } from './utils/sdk'
@@ -41,6 +42,7 @@ const navItems = [
     ],
   },
   { path: '/ai', label: 'AI访谈', icon: '🤖' },
+  { path: '/capture', label: '照片录入', icon: '📷' },
   { path: '/settings', label: '设置', icon: '⚙️' },
 ]
 
@@ -315,6 +317,7 @@ function AppLayout() {
             <Route path="/gallery" element={<ProtectedRoute><Gallery /></ProtectedRoute>} />
             <Route path="/friends" element={<ProtectedRoute><Friends /></ProtectedRoute>} />
             <Route path="/hobbies" element={<ProtectedRoute><Hobbies /></ProtectedRoute>} />
+            <Route path="/capture" element={<ProtectedRoute><CameraCapture onClose={() => window.history.back()} /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/account" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
 

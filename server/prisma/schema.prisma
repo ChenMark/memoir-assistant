@@ -34,6 +34,7 @@ model User {
   friends        Friend[]
   comments       PhotoComment[]
   hobbies        Hobby[]
+  captures       CaptureSession[]
   
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -174,4 +175,24 @@ model Hobby {
 
   @@index([userId, category])
   @@map("hobbies")
+}
+
+// ============ CaptureSession ============
+model CaptureSession {
+  id           String   @id @default(cuid())
+  userId       String
+  type         String   // 'photo' | 'video'
+  itemCount    Int      @default(0)  // 照片张数
+  transcript   String   @default("")  // 语音转文字
+  duration     Int?     // 视频时长(秒)
+  ossKeys      String   // JSON: ["uploads/capture/xxx.jpg"]
+  tags         String   @default("[]")  // JSON array
+  date         String   // YYYY-MM-DD
+  
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime @default(now())
+
+  @@index([userId, date])
+  @@map("capture_sessions")
 }

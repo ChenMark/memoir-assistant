@@ -38,6 +38,7 @@ import friendRoutes from './routes/friend.js'
 import galleryInteractRoutes, { sharedPhotoHandler } from './routes/gallery-interact.js'
 import hobbyRoutes from './routes/hobby.js'
 import versionRoutes from './routes/version.js'
+import captureRoutes from './routes/capture.js'
 import { requestLogger } from './middleware/requestLogger.js'
 import { sanitizeInput } from './middleware/sanitize.js'
 import { errorHandler } from './middleware/errorHandler.js'
@@ -155,6 +156,9 @@ app.use(`${API_PREFIX}/ai`, authMiddleware, bodySizeLimit(1 * 1024 * 1024), aiRo
 app.use(`${API_PREFIX}/friend`, authMiddleware, bodySizeLimit(10 * 1024), friendRoutes)
 // Hobby 路由：限制 10KB
 app.use(`${API_PREFIX}/hobby`, authMiddleware, bodySizeLimit(10 * 1024), hobbyRoutes)
+
+// 采集会话（摄像头拍照/录像）：认证 + 100KB（含base64缩略图元数据）
+app.use(`${API_PREFIX}/capture`, authMiddleware, bodySizeLimit(100 * 1024), captureRoutes)
 
 // 画廊交互（评论+分享）：需要认证
 app.use(`${API_PREFIX}/memoir/gallery`, authMiddleware, bodySizeLimit(10 * 1024), galleryInteractRoutes)
