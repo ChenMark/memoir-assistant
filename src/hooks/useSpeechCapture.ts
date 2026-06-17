@@ -26,21 +26,65 @@ interface ISpeechRecognition extends EventTarget {
   onend: (() => void) | null
 }
 
-const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+const SpeechRecognitionAPI =
+  typeof window !== 'undefined'
+    ? ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+    : null
 
 export function useSpeechCapture() {
   const [transcript, setTranscript] = useState('')
   const [interim, setInterim] = useState('')
   const [listening, setListening] = useState(false)
-  const [supported] = useState(!!SpeechRecognitionAPI)
+  const [error, setError] = useState<string | null>(null)
+  // 三档支持度: 'native' = Web Speech, 'server' = 服务端 ASR 兜底, 'none' = 不支持
+  const [mode, setMode] = useState<'native' | 'server' | 'none'>(
+    SpeechRecognitionAPI ? 'native' : 'server'
+  )
 
   const recognitionRef = useRef<ISpeechRecognition | null>(null)
   const finalRef = useRef('')
-  const interimRef = useRef('')       // ref 避免闭包读取过时 interim 值
-  const listeningRef = useRef(false)   // ref 避免 onend 闭包读取过时 listening 值
+  const interimRef = useRef('')
+  const listeningRef = useRef(false)
+
+  // Android Chrome 部分机型 SpeechRecognition 存在但实际不可用（首次返回 'not-allowed' / 'no-speech'）
+  // 失败时降级到服务端 ASR
+  const fallbackToServer = useCallback(() => {
+    setMode('server')
+    setError('浏览器语音识别不可用，将使用服务端识别（需上传音频）')
+  }, [])
+
+  // 探测：尝试启动一次，3 秒后若无 result，标记为不可用
+  const probeRecognition = useCallback((): Promise<boolean> => {
+    if (!SpeechRecognitionAPI) return Promise.resolve(false)
+    return new Promise((resolve) => {
+      try {
+        const r = new SpeechRecognitionAPI()
+        r.lang = 'zh-CN'
+        r.continuous = false
+        r.interimResults = false
+        let resolved = false
+        const done = (ok: boolean) => {
+          if (resolved) return
+          resolved = true
+          try { r.abort() } catch {}
+          resolve(ok)
+        }
+        r.onresult = () => done(true)
+        r.onerror = (e: any) => {
+          if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+            done(false)
+          }
+        }
+        setTimeout(() => done(false), 2500)
+        r.start()
+      } catch {
+        resolve(false)
+      }
+    })
+  }, [])
 
   const startListening = useCallback(() => {
-    if (!SpeechRecognitionAPI) return
+    if (mode === 'none' || !SpeechRecognitionAPI) return
     if (recognitionRef.current) recognitionRef.current.abort()
 
     const recognition: ISpeechRecognition = new SpeechRecognitionAPI()
@@ -64,8 +108,14 @@ export function useSpeechCapture() {
     }
 
     recognition.onerror = (event: SpeechRecognitionError) => {
+      // Android 关键: not-allowed / service-not-allowed 永久降级
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        fallbackToServer()
+        listeningRef.current = false
+        setListening(false)
+        return
+      }
       if (event.error === 'no-speech') {
-        // 无语音后尝试自动恢复
         if (listeningRef.current) {
           setTimeout(() => { try { recognition.start() } catch {} }, 500)
         }
@@ -73,6 +123,7 @@ export function useSpeechCapture() {
       }
       if (event.error === 'aborted') return
       console.warn('[Speech]', event.error, event.message)
+      setError(`语音识别错误: ${event.error}`)
       if (event.error === 'network' && listeningRef.current) {
         setTimeout(() => { try { recognition.start() } catch {} }, 1000)
       }
@@ -124,5 +175,15 @@ export function useSpeechCapture() {
     }
   }, [])
 
-  return { transcript, interim, listening, supported, startListening, stopListening, reset }
+  return {
+    transcript,
+    interim,
+    listening,
+    supported: mode !== 'none',
+    mode,
+    error,
+    startListening,
+    stopListening,
+    reset,
+  }
 }
