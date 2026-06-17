@@ -2,7 +2,31 @@
    忆往昔 AI 回忆录助手 · v2.0 现代化设计系统
    目标用户：中老年（50-80岁）
    设计理念：现代简约 / 扁平 / 高对比 / 4 色分区
+   平台支持：Android 平板 / 桌面 Chrome / 移动 Safari
    ============================================================ */
+
+/* ============ 基础（Android 字体栈优先） ============ */
+:root {
+  /* 字体：覆盖主流 Android ROM（华为/小米/三星/原生） */
+  --font-sans: "HarmonyOS Sans SC", "MiSans", "Noto Sans CJK SC",
+               -apple-system, BlinkMacSystemFont, "PingFang SC",
+               "Microsoft YaHei", "Helvetica Neue", system-ui, sans-serif;
+  --font-serif: "Source Han Serif SC", "Noto Serif SC", "Songti SC", "SimSun", serif;
+  --font-mono: "SF Mono", "JetBrains Mono", "Source Code Pro", "Courier New", monospace;
+
+  /* 视口变量（Android 软键盘） */
+  --viewport-height: 100vh;
+  --viewport-width: 100vw;
+  --viewport-offset-top: 0px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
+  /* 设备类型标记（JS 设置） */
+  --device-type: 'desktop';
+  --device-pixel-ratio: 1;
+}
 
 /* ============ CSS 设计变量 ============ */
 :root {
@@ -162,6 +186,31 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+  min-height: var(--viewport-height);
+  /* 防止 Android 浏览器橡皮筋效果 */
+  overscroll-behavior-y: none;
+  /* 防止文字选中（除输入框） */
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 输入框和文本可编辑区域恢复选择 */
+input, textarea, [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* ============ 触摸优化（Android 关键） ============ */
+button, a, [role="button"], label {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* 滚动容器：Android 弹性滚动 */
+.scroll-container {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 /* 滚动条（极简） */
@@ -814,4 +863,84 @@ input, textarea, select { font-family: inherit; outline: none; font-size: var(--
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ============================================================
+   Android 平板适配（断点 + 触摸 + 字号）
+   ============================================================ */
+
+/* 7-8 寸 Android 平板（联想小新 / 入门） */
+@media (min-width: 600px) {
+  html { font-size: 17px; }
+  .btn { min-height: 48px; padding: 12px 22px; }
+  .input { min-height: 48px; }
+  .card { padding: var(--space-6); }
+}
+
+/* 9-11 寸 Android 平板（华为 MatePad / 小米 Pad 主流） */
+@media (min-width: 840px) {
+  html { font-size: 18px; }
+  .btn { min-height: 52px; padding: 14px 24px; }
+  .input { min-height: 52px; font-size: 16px; }
+  .card { padding: var(--space-8); border-radius: 18px; }
+  .sidebar { width: 260px; min-width: 260px; }
+  .main-content { margin-left: 260px; padding: var(--space-8) var(--space-10); }
+  .sidebar-nav-item { min-height: 52px; padding: 14px 16px; font-size: 16px; }
+  .sidebar-logo { font-size: 20px; }
+}
+
+/* 12-13 寸 Android 平板（Galaxy Tab S / MatePad Pro） */
+@media (min-width: 1200px) {
+  html { font-size: 17px; }
+  .card { padding: var(--space-8); }
+}
+
+/* 横屏适配（Android 平板多为横屏使用） */
+@media (min-width: 840px) and (orientation: landscape) {
+  body { background-color: var(--bg); }
+}
+
+/* ============================================================
+   键盘安全区（Android 软键盘）
+   ============================================================ */
+input:focus, textarea:focus, [contenteditable="true"]:focus {
+  scroll-margin-bottom: var(--safe-bottom);
+}
+
+/* 底部固定的输入区，自动避开键盘 */
+.fixed-bottom-input {
+  position: sticky;
+  bottom: 0;
+  padding-bottom: var(--safe-bottom);
+  background: var(--bg-card);
+  border-top: 0.5px solid var(--border);
+}
+
+/* ============================================================
+   触摸反馈（替代 :hover 在移动设备上）
+   ============================================================ */
+.touchable {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.touchable:active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.06);
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+/* ============================================================
+   横屏模式特殊样式
+   ============================================================ */
+@media (min-width: 840px) and (max-width: 1199px) and (orientation: portrait) {
+  /* iPad/平板竖屏：紧凑双栏 */
+  .sidebar { width: 220px; min-width: 220px; }
+  .main-content { margin-left: 220px; padding: var(--space-6); }
 }
