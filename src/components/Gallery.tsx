@@ -29,10 +29,35 @@ export default function Gallery() {
   const [copied, setCopied] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const loadPhotos = useCallback(() => {
+  const loadPhotos = useCallback(async () => {
     const sdk = getSDK()
-    if (!sdk) return
-    setPhotos(sdk.getPhotos().sort((a, b) => b.uploadedAt - a.uploadedAt))
+    const localPhotos = sdk ? sdk.getPhotos() : []
+    
+    let serverPhotos: MemoirPhoto[] = []
+    try {
+      const token = localStorage.getItem('memoir_auth_token')
+      if (token) {
+        const res = await fetch('/api/v1/memoir/gallery?limit=50', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (res.ok) {
+          const body = await res.json()
+          const items = body.data || []
+          serverPhotos = items.map((item: any) => ({
+            id: item.id,
+            name: item.caption || '未命名',
+            url: item.downloadUrl || '',
+            uploadedAt: new Date(item.createdAt).getTime(),
+            size: 0,
+            galleryId: item.id,
+          }))
+        }
+      }
+    } catch { /* 服务器不可用时降级到本地 */ }
+    
+    const localIds = new Set(localPhotos.map((p: MemoirPhoto) => p.galleryId).filter(Boolean))
+    const newServerPhotos = serverPhotos.filter((p) => p.galleryId && !localIds.has(p.galleryId))
+    setPhotos([...localPhotos, ...newServerPhotos].sort((a, b) => b.uploadedAt - a.uploadedAt))
   }, [])
 
   useEffect(() => {

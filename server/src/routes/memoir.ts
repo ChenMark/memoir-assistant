@@ -6,6 +6,7 @@ import { Router, Request, Response } from 'express'
 import { authMiddleware } from './auth.js'
 import { prisma } from '../lib/prisma.js'
 import { parsePagination, paginatedResponse } from '../lib/pagination.js'
+import { generateDownloadUrl } from '../lib/oss.js'
 import {
   createMemoirSchema, updateMemoirSchema, saveDraftSchema,
   createGallerySchema,
@@ -274,6 +275,7 @@ router.get('/gallery', async (req: Request, res: Response) => {
       tags: JSON.parse(item.tags || '[]'),
       date: item.date,
       createdAt: item.createdAt.toISOString(),
+      downloadUrl: generateDownloadUrl(item.ossKey),
     }))
 
     res.json(paginatedResponse(data, total, page, limit))

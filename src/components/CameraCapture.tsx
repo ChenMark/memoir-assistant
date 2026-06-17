@@ -110,6 +110,31 @@ export default function CameraCapture({ onClose }: { onClose: () => void }) {
         })
       }
 
+      // 同步到相册：每张照片/视频写入 Gallery 记录
+      const today = new Date().toISOString().slice(0, 10)
+      const galleryResults = await Promise.allSettled(
+        ossKeys.map((key) =>
+          fetch('/api/v1/memoir/gallery', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              ossKey: key,
+              caption: speech.transcript ? speech.transcript.substring(0, 100) : `相机采集 ${today}`,
+              date: today,
+              tags: ['相机采集'],
+            }),
+          }).then(async (r) => (r.ok ? r.json() : null)),
+        ),
+      )
+      // 将新照片 ID 存入 localStorage，供 Gallery 直接加载
+      const galleryIds = galleryResults
+        .filter((r): r is PromiseFulfilledResult<{ item?: { id: string } }> => r.status === 'fulfilled' && r.value?.item?.id != null)
+        .map((r) => r.value!.item!.id)
+      if (galleryIds.length > 0) {
+        const existingIds = JSON.parse(localStorage.getItem('memoir_gallery_ids') || '[]')
+        localStorage.setItem('memoir_gallery_ids', JSON.stringify([...galleryIds, ...existingIds].slice(0, 500)))
+      }
+
       setSaveMsg(`✅ 保存成功！${ossKeys.length} 个文件`)
       setUploadProgress('')
       setTimeout(() => onClose(), 1000)
