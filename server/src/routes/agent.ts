@@ -10,6 +10,25 @@ import { getConversation, saveConversation } from '../lib/conversation-store.js'
 // 注意：authMiddleware 在 index.ts 已挂载，此处不重复
 const router = Router()
 
+// OpenAI Chat Completions 响应类型
+interface OpenAICompletion {
+  choices?: Array<{
+    message?: {
+      role?: string;
+      content?: string | null;
+      tool_calls?: Array<{
+        id: string;
+        type: 'function';
+        function: {
+          name: string;
+          arguments: string;
+        };
+      }>;
+    };
+    finish_reason?: string;
+  }>;
+}
+
 // HIGH-1: Agent 专用限流器（防资损 + 防 DoS）
 // AI 请求按 token 计费，每用户每分钟 10 次
 const agentLimiter = rateLimit({
@@ -129,7 +148,7 @@ router.post('/chat', async (req: Request, res: Response) => {
         break
       }
 
-      const completion = await response.json()
+      const completion = await response.json() as OpenAICompletion
       const choice = completion.choices?.[0]
       const msg = choice?.message
 
