@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MemoirSDK } from '../utils/sdk'
 import AgentSuggestions from './AgentSuggestions'
+import { useDevice } from '../hooks/useDevice'
 
 function getSDK(): MemoirSDK {
   return (window as any)._memoirSDK as MemoirSDK
@@ -9,6 +10,8 @@ function getSDK(): MemoirSDK {
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const device = useDevice()
+  const isTablet = device.type === 'tablet' || device.type === 'tablet-small'
   const [stats, setStats] = useState({ draftCount: 0, photoCount: 0, friendCount: 0, totalWords: 0, lastEdited: 0 })
   const [recentDrafts, setRecentDrafts] = useState<any[]>([])
   const [cloudStatus, setCloudStatus] = useState<'checking' | 'online' | 'offline'>('checking')
@@ -80,11 +83,14 @@ export default function Dashboard() {
         </span>
       </p>
 
-      {/* 统计卡片 */}
+      {/* 统计卡片 — 平板 4 列，手机 2 列 */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: 24, marginBottom: 48,
+        gridTemplateColumns: isTablet
+          ? 'repeat(4, 1fr)'
+          : 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: isTablet ? 20 : 24,
+        marginBottom: 48,
       }}>
         {statCards.map(card => (
           <div

@@ -1,16 +1,20 @@
 /**
  * 摄像头采集组件 — 老年友好大字体界面
  * 支持拍照(10张) / 录像(60秒) + 实时语音转文字
+ * 适配 Android 平板横屏双栏
  */
 import { useState } from 'react'
 import { useCamera } from '../hooks/useCamera'
 import { useSpeechCapture } from '../hooks/useSpeechCapture'
+import { useDevice } from '../hooks/useDevice'
 
 type Mode = 'idle' | 'photo' | 'video' | 'review'
 
 export default function CameraCapture({ onClose }: { onClose: () => void }) {
   const cam = useCamera()
   const speech = useSpeechCapture()
+  const device = useDevice()
+  const isTablet = device.type === 'tablet' || device.type === 'tablet-small'
   const [mode, setMode] = useState<Mode>('idle')
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
@@ -152,22 +156,53 @@ export default function CameraCapture({ onClose }: { onClose: () => void }) {
     setMode('review')
   }
 
-  // ===== 拍照模式 =====
+  // ===== 拍照模式 — 平板双栏 / 手机单栏 =====
   if (mode === 'photo') {
     return (
       <div style={fullScreen}>
-        <div style={{ position: 'relative', flex: 1 }}>
-          <video ref={cam.videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          <div style={countBadge}>📷 {cam.photos.length}/10</div>
-          <button onClick={cam.flipCamera} style={{ ...iconBtn('#fff', 'rgba(0,0,0,0.5)'), right: 60 }} aria-label="翻转镜头">🔄</button>
-          <button onClick={() => { cam.stopCamera(); setMode('idle') }} style={iconBtn('#fff', 'rgba(255,0,0,0.4)')} aria-label="关闭摄像头">✕</button>
-        </div>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', padding: 16, background: '#000' }}>
-          <button onClick={() => cam.takePhoto()} disabled={cam.photos.length >= 10}
-            style={bigBtn('#fff', '#1a1a2e', cam.photos.length >= 10 ? '#444' : '#6366f1')}>📸 拍照</button>
-          <button onClick={goReview} disabled={cam.photos.length === 0}
-            style={bigBtn('#fff', '#1a1a2e', cam.photos.length > 0 ? '#22c55e' : '#444')}>✓ 预览 ({cam.photos.length})</button>
-        </div>
+        {isTablet ? (
+          // 平板横屏：左侧取景 60% / 右侧控制 40%
+          <div style={{ display: 'flex', flex: 1, background: '#000' }}>
+            <div style={{ position: 'relative', flex: '0 0 60%' }}>
+              <video ref={cam.videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div style={countBadge}>📷 {cam.photos.length}/10</div>
+              <button onClick={cam.flipCamera} style={{ ...iconBtn('#fff', 'rgba(0,0,0,0.5)'), right: 60 }} aria-label="翻转镜头">🔄</button>
+              <button onClick={() => { cam.stopCamera(); setMode('idle') }} style={iconBtn('#fff', 'rgba(255,0,0,0.4)')} aria-label="关闭摄像头">✕</button>
+            </div>
+            <div style={{ flex: 1, background: 'var(--bg-card)', padding: 24, display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto' }}>
+              <h3 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>已拍 {cam.photos.length} / 10 张</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                {cam.photos.map((p, i) => (
+                  <div key={p.id} style={{ position: 'relative', aspectRatio: '1', borderRadius: 8, overflow: 'hidden', background: '#f0f0f0' }}>
+                    <img src={p.url} alt={`照片 ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <button onClick={() => cam.takePhoto()} disabled={cam.photos.length >= 10}
+                  style={bigBtn('#fff', '#1a1a2e', cam.photos.length >= 10 ? '#444' : '#6366f1')}>📸 拍照</button>
+                <button onClick={goReview} disabled={cam.photos.length === 0}
+                  style={bigBtn('#fff', '#1a1a2e', cam.photos.length > 0 ? '#22c55e' : '#444')}>✓ 预览保存</button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          // 手机：单列
+          <>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <video ref={cam.videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div style={countBadge}>📷 {cam.photos.length}/10</div>
+              <button onClick={cam.flipCamera} style={{ ...iconBtn('#fff', 'rgba(0,0,0,0.5)'), right: 60 }} aria-label="翻转镜头">🔄</button>
+              <button onClick={() => { cam.stopCamera(); setMode('idle') }} style={iconBtn('#fff', 'rgba(255,0,0,0.4)')} aria-label="关闭摄像头">✕</button>
+            </div>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', padding: 16, background: '#000' }}>
+              <button onClick={() => cam.takePhoto()} disabled={cam.photos.length >= 10}
+                style={bigBtn('#fff', '#1a1a2e', cam.photos.length >= 10 ? '#444' : '#6366f1')}>📸 拍照</button>
+              <button onClick={goReview} disabled={cam.photos.length === 0}
+                style={bigBtn('#fff', '#1a1a2e', cam.photos.length > 0 ? '#22c55e' : '#444')}>✓ 预览 ({cam.photos.length})</button>
+            </div>
+          </>
+        )}
       </div>
     )
   }
