@@ -34,7 +34,7 @@ const VIDEO_CONSTRAINTS = {
     height: { ideal: 1080, min: 720 },
     frameRate: { ideal: 30, min: 24 },
   },
-  audio: true, // 老年人需要语音旁白
+  audio: true,
 }
 
 const MAX_PHOTOS = 10
@@ -42,10 +42,7 @@ const MAX_VIDEO_SEC = 60
 
 export function useCamera() {
   const [camera, setCamera] = useState<CameraState>({
-    stream: null,
-    error: null,
-    ready: false,
-    facing: 'environment',
+    stream: null, error: null, ready: false, facing: 'environment',
   })
   const [photos, setPhotos] = useState<PhotoCapture[]>([])
   const [video, setVideo] = useState<VideoCapture>({
@@ -54,20 +51,22 @@ export function useCamera() {
   const [videoTimer, setVideoTimer] = useState(0)
 
   const videoRef = useRef<HTMLVideoElement>(null!)
+  const streamRef = useRef<MediaStream | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<number>(0)
   const videoStartRef = useRef<number>(0)
+  const videoTimerRef = useRef(0)
+  const blobUrlsRef = useRef<string[]>([])  // 追踪创建的 blob URL 以便清理
 
   // 启动摄像头
   const startCamera = useCallback(async () => {
     try {
       setCamera((prev) => ({ ...prev, error: null }))
       const stream = await navigator.mediaDevices.getUserMedia(VIDEO_CONSTRAINTS)
+      streamRef.current = stream
       setCamera({ stream, error: null, ready: true, facing: 'environment' })
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-      }
+      if (videoRef.current) videoRef.current.srcObject = stream
       return stream
     } catch (err: unknown) {
       const msg = (err as DOMException).name === 'NotAllowedError'
@@ -80,18 +79,23 @@ export function useCamera() {
     }
   }, [])
 
-  // 停止摄像头
+  // 停止摄像头（内部使用 ref 避免闭包问题）
   const stopCamera = useCallback(() => {
-    if (camera.stream) {
-      camera.stream.getTracks().forEach((t) => t.stop())
+    const stream = streamRef.current
+    if (stream) {
+      stream.getTracks().forEach((t) => t.stop())
+      streamRef.current = null
     }
+    // 释放所有 blob URL
+    blobUrlsRef.current.forEach((url) => URL.revokeObjectURL(url))
+    blobUrlsRef.current = []
     setCamera({ stream: null, error: null, ready: false, facing: 'environment' })
-  }, [camera.stream])
+  }, [])
 
-  // 拍照 — 从视频流截取最高分辨率帧
-  const takePhoto = useCallback((): PhotoCapture | null => {
+  // 拍照
+  const takePhoto = useCallback(() => {
     const v = videoRef.current
-    if (!v || !camera.stream) return null
+    if (!v || !streamRef.current) return null
     if (photos.length >= MAX_PHOTOS) return null
 
     const canvas = document.createElement('canvas')
@@ -100,35 +104,39 @@ export function useCamera() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return null
 
-    // 水平翻转（前置镜头时）
     if (camera.facing === 'user') {
       ctx.translate(canvas.width, 0)
       ctx.scale(-1, 1)
     }
     ctx.drawImage(v, 0, 0)
 
-    // 92% JPEG 质量保证纸质照片细节清晰
     canvas.toBlob((blob) => {
       if (blob) {
         const photo = makePhoto(blob, canvas.width, canvas.height)
+        blobUrlsRef.current.push(photo.url)
         setPhotos((prev) => [...prev, photo])
       }
     }, 'image/jpeg', 0.92)
-    return null // 异步回调，通过 setPhotos 更新
-  }, [camera.stream, camera.facing, photos.length])
+    return null
+  }, [camera.facing, photos.length])
 
   // 删除照片
   const removePhoto = useCallback((id: string) => {
-    setPhotos((prev) => prev.filter((p) => p.id !== id))
+    setPhotos((prev) => {
+      const photo = prev.find((p) => p.id === id)
+      if (photo) URL.revokeObjectURL(photo.url)
+      return prev.filter((p) => p.id !== id)
+    })
   }, [])
 
-  // 开始录像（最长 60 秒）
+  // 开始录像
   const startRecording = useCallback(() => {
-    if (!camera.stream) return
+    const stream = streamRef.current
+    if (!stream) return
     const mimeType = getBestMimeType()
-    const recorder = new MediaRecorder(camera.stream, {
+    const recorder = new MediaRecorder(stream, {
       mimeType,
-      videoBitsPerSecond: 4_000_000, // 4 Mbps 保证质量
+      videoBitsPerSecond: 4_000_000,
     })
     chunksRef.current = []
     recorder.ondataavailable = (e) => {
@@ -137,29 +145,25 @@ export function useCamera() {
     recorder.onstop = () => {
       const blob = new Blob(chunksRef.current, { type: mimeType })
       const url = URL.createObjectURL(blob)
-      const duration = videoTimerRef.current
-      setVideo({ blob, url, duration, recording: false })
+      blobUrlsRef.current.push(url)
+      setVideo({ blob, url, duration: videoTimerRef.current, recording: false })
       clearInterval(timerRef.current)
     }
-    recorder.start(1000) // 每秒生成一个 chunk
+    recorder.start(1000)
     mediaRecorderRef.current = recorder
     videoStartRef.current = Date.now()
 
     setVideo({ blob: null, url: null, duration: 0, recording: true })
     setVideoTimer(0)
 
-    // 录制倒计时
     timerRef.current = window.setInterval(() => {
       const elapsed = Math.round((Date.now() - videoStartRef.current) / 1000)
       videoTimerRef.current = elapsed
       setVideoTimer(elapsed)
-      if (elapsed >= MAX_VIDEO_SEC) {
-        recorder.stop()
-      }
+      if (elapsed >= MAX_VIDEO_SEC) recordingGracefulStop(recorder)
     }, 200)
-  }, [camera.stream])
+  }, [])
 
-  // 停止录制
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current?.state === 'recording') {
       mediaRecorderRef.current.stop()
@@ -177,10 +181,9 @@ export function useCamera() {
         video: { ...VIDEO_CONSTRAINTS.video, facingMode: newFacing },
         audio: true,
       })
+      streamRef.current = stream
       setCamera({
-        stream,
-        error: null,
-        ready: true,
+        stream, error: null, ready: true,
         facing: camera.facing === 'environment' ? 'user' : 'environment',
       })
       if (videoRef.current) videoRef.current.srcObject = stream
@@ -191,41 +194,35 @@ export function useCamera() {
 
   const reset = useCallback(() => {
     stopRecording()
-    setPhotos([])
+    setPhotos((prev) => { prev.forEach((p) => URL.revokeObjectURL(p.url)); return [] })
+    if (video.url) URL.revokeObjectURL(video.url)
     setVideo({ blob: null, url: null, duration: 0, recording: false })
     setVideoTimer(0)
     chunksRef.current = []
-  }, [stopRecording])
+  }, [stopRecording, video.url])
 
-  // 清理
+  // ===== 组件卸载清理 =====
   useEffect(() => {
     return () => {
-      stopCamera()
+      // 停止媒体流
+      const stream = streamRef.current
+      if (stream) stream.getTracks().forEach((t) => t.stop())
+      streamRef.current = null
+      // 清理计时器
       clearInterval(timerRef.current)
+      // 释放所有 blob URL
+      blobUrlsRef.current.forEach((url) => URL.revokeObjectURL(url))
+      blobUrlsRef.current = []
     }
-  }, [stopCamera])
+  }, [])
 
   return {
-    camera,
-    photos,
-    video,
-    videoTimer,
-    videoRef,
-    startCamera,
-    stopCamera,
-    takePhoto,
-    removePhoto,
-    startRecording,
-    stopRecording,
-    flipCamera,
-    reset,
-    maxPhotos: MAX_PHOTOS,
-    maxVideoSec: MAX_VIDEO_SEC,
+    camera, photos, video, videoTimer, videoRef,
+    startCamera, stopCamera, takePhoto, removePhoto,
+    startRecording, stopRecording, flipCamera, reset,
+    maxPhotos: MAX_PHOTOS, maxVideoSec: MAX_VIDEO_SEC,
   }
 }
-
-// 引用用于 onstop 回调中获取最新计时值
-let videoTimerRef = { current: 0 }
 
 function makePhoto(blob: Blob, w: number, h: number): PhotoCapture {
   return {
@@ -249,4 +246,9 @@ function getBestMimeType(): string {
     if (MediaRecorder.isTypeSupported(t)) return t
   }
   return 'video/webm'
+}
+
+/** 优雅停止录制（内部调用，避免 useCallback dep 循环） */
+function recordingGracefulStop(recorder: MediaRecorder) {
+  if (recorder.state === 'recording') recorder.stop()
 }

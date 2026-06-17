@@ -2,7 +2,7 @@
  * 摄像头采集组件 — 老年友好大字体界面
  * 支持拍照(10张) / 录像(60秒) + 实时语音转文字
  */
-import { useEffect, useState, useCallback } from 'react'
+import { useState } from 'react'
 import { useCamera } from '../hooks/useCamera'
 import { useSpeechCapture } from '../hooks/useSpeechCapture'
 
@@ -14,9 +14,9 @@ export default function CameraCapture({ onClose }: { onClose: () => void }) {
   const [mode, setMode] = useState<Mode>('idle')
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
-  const [prevMode, setPrevMode] = useState<'photo' | 'video'>('photo')  // 记录预览前模式
+  const [prevMode, setPrevMode] = useState<'photo' | 'video'>('photo')
+  const [uploadProgress, setUploadProgress] = useState('')
 
-  // 模式切换
   const enterPhoto = () => {
     cam.startCamera()
     cam.reset()
@@ -33,12 +33,6 @@ export default function CameraCapture({ onClose }: { onClose: () => void }) {
     })
   }
 
-  // 拍照
-  const handleTakePhoto = () => {
-    cam.takePhoto()
-  }
-
-  // 录像控制
   const handleStartRecord = () => {
     cam.startRecording()
     speech.startListening()
@@ -48,30 +42,37 @@ export default function CameraCapture({ onClose }: { onClose: () => void }) {
     speech.stopListening()
   }
 
-  // 保存到云端
+  // 保存到云端（使用 prevMode 判断照片/视频）
   const handleSave = async () => {
     setSaving(true)
     setSaveMsg('')
     try {
-      // 1. 上传照片/视频到 OSS
       const ossKeys: string[] = []
       const token = localStorage.getItem('memoir_auth_token') || ''
 
-      if (mode === 'photo') {
-        for (const photo of cam.photos) {
-          const key = `uploads/capture/${Date.now()}_${photo.id}.jpg`
-          const signRes = await fetch(`/api/v1/oss/sign`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ key, contentType: 'image/jpeg' }),
-          })
-          if (signRes.ok) {
-            const { uploadUrl } = await signRes.json()
-            await fetch(uploadUrl, { method: 'PUT', body: photo.blob, headers: { 'Content-Type': 'image/jpeg' } })
-            ossKeys.push(key)
-          }
-        }
-      } else if (mode === 'video' && cam.video.blob) {
+      if (prevMode === 'photo') {
+        const total = cam.photos.length
+        // Promise.all 并行上传
+        const results = await Promise.allSettled(
+          cam.photos.map(async (photo, i) => {
+            const key = `uploads/capture/${Date.now()}_${photo.id}.jpg`
+            setUploadProgress(`上传中 ${i + 1}/${total}...`)
+            const signRes = await fetch(`/api/v1/oss/sign`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ key, contentType: 'image/jpeg' }),
+            })
+            if (signRes.ok) {
+              const { uploadUrl } = await signRes.json()
+              await fetch(uploadUrl, { method: 'PUT', body: photo.blob, headers: { 'Content-Type': 'image/jpeg' } })
+              return key
+            }
+            return null
+          }),
+        )
+        results.forEach((r) => { if (r.status === 'fulfilled' && r.value) ossKeys.push(r.value) })
+      } else if (prevMode === 'video' && cam.video.blob) {
+        setUploadProgress('上传中...')
         const key = `uploads/capture/${Date.now()}_video.webm`
         const signRes = await fetch(`/api/v1/oss/sign`, {
           method: 'POST',
@@ -85,41 +86,41 @@ export default function CameraCapture({ onClose }: { onClose: () => void }) {
         }
       }
 
-      // 2. 创建会话记录
+      // 创建会话记录
       const sessionRes = await fetch('/api/v1/capture/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          type: mode,
+          type: prevMode,
           date: new Date().toISOString().slice(0, 10),
           tags: ['相机采集'],
         }),
       })
       if (sessionRes.ok) {
         const { session } = await sessionRes.json()
-        // 3. 更新 OSS keys 和转写文本
         await fetch(`/api/v1/capture/session/${session.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({
             ossKeys,
             transcript: speech.transcript || speech.stopListening() || '',
-            duration: mode === 'video' ? cam.video.duration : undefined,
-            itemCount: mode === 'photo' ? cam.photos.length : 1,
+            duration: prevMode === 'video' ? cam.video.duration : undefined,
+            itemCount: prevMode === 'photo' ? ossKeys.length : 1,
           }),
         })
       }
 
-      setSaveMsg('✅ 保存成功！')
+      setSaveMsg(`✅ 保存成功！${ossKeys.length} 个文件`)
+      setUploadProgress('')
       setTimeout(() => onClose(), 1000)
     } catch (err) {
       setSaveMsg(`❌ 保存失败: ${(err as Error).message}`)
+      setUploadProgress('')
     } finally {
       setSaving(false)
     }
   }
 
-  // 前往预览
   const goReview = () => {
     if (mode === 'video') speech.stopListening()
     setPrevMode(mode as 'photo' | 'video')
@@ -130,19 +131,14 @@ export default function CameraCapture({ onClose }: { onClose: () => void }) {
   if (mode === 'photo') {
     return (
       <div style={fullScreen}>
-        {/* 摄像头预览 */}
         <div style={{ position: 'relative', flex: 1 }}>
           <video ref={cam.videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          <div style={{ position: 'absolute', top: 16, left: 16, background: 'rgba(0,0,0,0.6)', color: '#fff', borderRadius: 12, padding: '4px 14px', fontSize: 16, fontWeight: 600 }}>
-            📷 {cam.photos.length}/10
-          </div>
-          <button onClick={cam.flipCamera} style={{ ...iconBtn('#fff', 'rgba(0,0,0,0.5)'), right: 60 }}>🔄</button>
-          <button onClick={() => { cam.stopCamera(); setMode('idle') }} style={iconBtn('#fff', 'rgba(255,0,0,0.4)')}>✕</button>
+          <div style={countBadge}>📷 {cam.photos.length}/10</div>
+          <button onClick={cam.flipCamera} style={{ ...iconBtn('#fff', 'rgba(0,0,0,0.5)'), right: 60 }} aria-label="翻转镜头">🔄</button>
+          <button onClick={() => { cam.stopCamera(); setMode('idle') }} style={iconBtn('#fff', 'rgba(255,0,0,0.4)')} aria-label="关闭摄像头">✕</button>
         </div>
-
-        {/* 底部操作栏 */}
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', padding: 16, background: '#000' }}>
-          <button onClick={handleTakePhoto} disabled={cam.photos.length >= 10}
+          <button onClick={() => cam.takePhoto()} disabled={cam.photos.length >= 10}
             style={bigBtn('#fff', '#1a1a2e', cam.photos.length >= 10 ? '#444' : '#6366f1')}>📸 拍照</button>
           <button onClick={goReview} disabled={cam.photos.length === 0}
             style={bigBtn('#fff', '#1a1a2e', cam.photos.length > 0 ? '#22c55e' : '#444')}>✓ 预览 ({cam.photos.length})</button>
@@ -159,18 +155,14 @@ export default function CameraCapture({ onClose }: { onClose: () => void }) {
       <div style={fullScreen}>
         <div style={{ position: 'relative', flex: 1 }}>
           <video ref={cam.videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          {/* 实时语音转写 */}
           {speech.interim && (
             <div style={{ position: 'absolute', bottom: 80, left: 16, right: 16, background: 'rgba(0,0,0,0.7)', color: '#fff', borderRadius: 12, padding: 10, fontSize: 16, lineHeight: 1.5, maxHeight: 80, overflowY: 'auto' }}>
               🎤 {speech.interim}
             </div>
           )}
-          <div style={{ position: 'absolute', top: 16, left: 16, background: 'rgba(0,0,0,0.6)', color: '#fff', borderRadius: 12, padding: '4px 14px', fontSize: 16, fontWeight: 600 }}>
-            {isRecording ? `⏺ ${timeLeft}秒` : '🎥 就绪'}
-          </div>
-          <button onClick={() => { cam.stopCamera(); setMode('idle') }} style={iconBtn('#fff', 'rgba(255,0,0,0.4)')}>✕</button>
+          <div style={countBadge}>{isRecording ? `⏺ ${timeLeft}秒` : '🎥 就绪'}</div>
+          <button onClick={() => { cam.stopCamera(); setMode('idle') }} style={iconBtn('#fff', 'rgba(255,0,0,0.4)')} aria-label="关闭摄像头">✕</button>
         </div>
-
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', padding: 16, background: '#000' }}>
           {!cam.video.blob ? (
             <>
@@ -195,28 +187,25 @@ export default function CameraCapture({ onClose }: { onClose: () => void }) {
         <div style={{ padding: 20, color: '#fff' }}>
           <h2 style={{ fontSize: 22, margin: 0, marginBottom: 16 }}>📋 采集预览</h2>
 
-          {/* 照片网格 */}
           {cam.photos.length > 0 && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
-              {cam.photos.map((p) => (
+              {cam.photos.map((p, i) => (
                 <div key={p.id} style={{ position: 'relative' }}>
-                  <img src={p.url} alt="" style={{ width: '100%', borderRadius: 8 }} />
-                  <button onClick={() => cam.removePhoto(p.id)}
+                  <img src={p.url} alt={`照片 ${i + 1}`} style={{ width: '100%', borderRadius: 8 }} />
+                  <button onClick={() => cam.removePhoto(p.id)} aria-label={`删除照片 ${i + 1}`}
                     style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(255,0,0,0.7)', color: '#fff', border: 'none', borderRadius: 12, width: 24, height: 24, fontSize: 12, cursor: 'pointer' }}>✕</button>
                 </div>
               ))}
             </div>
           )}
 
-          {/* 视频预览 */}
           {cam.video.url && (
             <div style={{ marginBottom: 16 }}>
-              <video src={cam.video.url} controls style={{ width: '100%', borderRadius: 8, maxHeight: 300 }} />
+              <video src={cam.video.url} controls playsInline style={{ width: '100%', borderRadius: 8, maxHeight: 300 }} />
               <div style={{ fontSize: 14, color: '#aaa', marginTop: 4 }}>时长: {cam.video.duration}秒</div>
             </div>
           )}
 
-          {/* 语音转写 */}
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 14, color: '#888', marginBottom: 4 }}>🎤 语音旁白：</div>
             <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: 12, fontSize: 15, color: '#ccc', lineHeight: 1.6, minHeight: 50 }}>
@@ -224,12 +213,11 @@ export default function CameraCapture({ onClose }: { onClose: () => void }) {
             </div>
           </div>
 
-          {/* 操作按钮 */}
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={() => { cam.reset(); speech.reset(); setMode(prevMode) }}
               style={bigBtn('#fff', '', '#f59e0b')}>🔄 重新采集</button>
             <button onClick={handleSave} disabled={saving}
-              style={bigBtn('#fff', '', saving ? '#666' : '#22c55e')}>{saving ? '保存中...' : '💾 保存到云端'}</button>
+              style={bigBtn('#fff', '', saving ? '#666' : '#22c55e')}>{saving ? `保存中... ${uploadProgress}` : '💾 保存到云端'}</button>
           </div>
           {saveMsg && <div style={{ marginTop: 12, fontSize: 15, color: saveMsg.startsWith('✅') ? '#4ade80' : '#f87171' }}>{saveMsg}</div>}
         </div>
@@ -259,6 +247,12 @@ export default function CameraCapture({ onClose }: { onClose: () => void }) {
 const fullScreen: React.CSSProperties = {
   position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50000,
   display: 'flex',
+}
+
+const countBadge: React.CSSProperties = {
+  position: 'absolute', top: 16, left: 16,
+  background: 'rgba(0,0,0,0.6)', color: '#fff',
+  borderRadius: 12, padding: '4px 14px', fontSize: 16, fontWeight: 600,
 }
 
 const bigBtn = (color: string, bgFallback: string, bg: string): React.CSSProperties => ({
