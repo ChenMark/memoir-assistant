@@ -327,7 +327,7 @@ export const agentTools: AgentTool[] = [
       const results = await semanticSearch(userId, args.query as string)
       if (results.length === 0) return `未找到与「${args.query}」相关的内容`
       return results.map((r, i) => {
-        const icon = { memoir: '📝', photo: '🖼️', hobby: '❤️', friend: '👤' }[r.type]
+        const icon = { memoir: '📝', photo: '🖼️', hobby: '❤️', friend: '👤', capture: '📷' }[r.type]
         return `${i + 1}. ${icon} [${r.type}] ${r.title}\n   ${r.snippet}`
       }).join('\n\n')
     },

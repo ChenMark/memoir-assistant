@@ -81,7 +81,7 @@ router.get('/', async (req, res) => {
           select: { name: true, relationship: true },
         })
         if (f) enriched.title = f.name
-      } else if (item.type as string === 'capture' && item.id) {
+      } else if (item.type === 'capture' && item.id) {
         const c = await prisma.captureSession.findUnique({
           where: { id: item.id },
           select: { type: true, date: true, transcript: true },

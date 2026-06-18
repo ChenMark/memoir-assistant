@@ -56,9 +56,18 @@ router.post('/from-photos', async (req, res) => {
   const parse = fromPhotosSchema.safeParse(req.body)
   if (!parse.success) return res.status(400).json({ error: '参数错误' })
 
+  // ✅ S1 修复：ossKey 必须以用户专属前缀开头，防止跨用户访问
+  //    用户专属路径约定: uploads/{userId}/...
+  const userPrefix = `uploads/${uid}/`
+  const validatedKeys = parse.data.ossKeys.filter((k) => k.startsWith(userPrefix))
+
+  if (validatedKeys.length === 0) {
+    return res.status(400).json({ error: '照片 key 无效或不属于当前用户' })
+  }
+
   // 加载照片元数据
   const photos = await prisma.gallery.findMany({
-    where: { userId: uid, ossKey: { in: parse.data.ossKeys } },
+    where: { userId: uid, ossKey: { in: validatedKeys } },
   })
 
   const captions = photos.map((p, i) => `${i + 1}. ${p.caption || '一张照片'}（${p.date}）`).join('\n')
@@ -86,7 +95,7 @@ ${captions}
       date: photos[0]?.date || new Date().toISOString().slice(0, 10),
       tags: JSON.stringify(['AI生成', '照片']),
       mood: 'sentimental',
-      media: JSON.stringify(parse.data.ossKeys),
+      media: JSON.stringify(validatedKeys),  // ✅ 仅保存已校验的 key
     },
   })
   res.json({ memoir })

@@ -5,7 +5,8 @@
 import { prisma } from './prisma.js'
 
 export interface SearchResult {
-  type: 'memoir' | 'photo' | 'hobby' | 'friend'
+  // ✅ S6 修复：补充 'capture' 类型（与 search.ts 实际使用一致）
+  type: 'memoir' | 'photo' | 'hobby' | 'friend' | 'capture'
   id: string
   title: string
   snippet: string

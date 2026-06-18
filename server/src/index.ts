@@ -61,6 +61,10 @@ import { sanitizeInput } from './middleware/sanitize.js'
 import { errorHandler } from './middleware/errorHandler.js'
 
 const app = express()
+// ✅ S5 修复：trust proxy 让 req.protocol 真实反映 X-Forwarded-Proto
+//    部署在反向代理后（Nginx/Cloudflare）时分享链接能正确生成 https://
+app.set('trust proxy', 1)
+
 const PORT = process.env.BACKEND_PORT ? parseInt(process.env.BACKEND_PORT) : 3000
 const API_PREFIX = '/api/v1'
 

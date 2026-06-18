@@ -192,6 +192,10 @@ router.post('/upload', async (req, res) => {
 
   for (const op of parse.data.operations) {
     const clientTs = new Date(op.clientUpdatedAt)
+    // ✅ S4 修复：服务端时间戳替代客户端时间戳
+    //    客户端时间戳仅作为冲突检测（已在上方 existing.updatedAt > clientTs 判断）
+    //    实际写入用服务端时间，避免时钟偏移/篡改
+    const serverTs = new Date()
 
     try {
       if (op.type === 'memoir') {
@@ -230,7 +234,7 @@ router.post('/upload', async (req, res) => {
               date: op.payload?.date as string,
               tags: JSON.stringify(op.payload?.tags || []),
               mood: (op.payload?.mood as string) || null,
-              updatedAt: clientTs,
+              updatedAt: serverTs,
             },
           })
           results.push({ clientId: op.clientId, serverId: updated.id, action: 'update', success: true })
@@ -245,8 +249,8 @@ router.post('/upload', async (req, res) => {
               tags: JSON.stringify(op.payload?.tags || []),
               mood: (op.payload?.mood as string) || null,
               media: '[]',
-              createdAt: clientTs,
-              updatedAt: clientTs,
+              createdAt: serverTs,
+              updatedAt: serverTs,
             },
           })
           results.push({ clientId: op.clientId, serverId: created.id, action: 'create', success: true })
@@ -271,7 +275,7 @@ router.post('/upload', async (req, res) => {
               relationship: (op.payload?.relationship as string) || (op.payload?.relation as string) || null,
               school: (op.payload?.school as string) || null,
               classInfo: (op.payload?.classInfo as string) || null,
-              updatedAt: clientTs,
+              updatedAt: serverTs,
             },
           })
           results.push({ clientId: op.clientId, action: 'update', success: true })
@@ -286,8 +290,8 @@ router.post('/upload', async (req, res) => {
               school: (op.payload?.school as string) || null,
               classInfo: (op.payload?.classInfo as string) || null,
               tags: JSON.stringify(op.payload?.tags || []),
-              createdAt: clientTs,
-              updatedAt: clientTs,
+              createdAt: serverTs,
+              updatedAt: serverTs,
             },
           })
           results.push({ clientId: op.clientId, action: 'create', success: true })
@@ -313,7 +317,7 @@ router.post('/upload', async (req, res) => {
               rating: (op.payload?.rating as number) || 0,
               year: (op.payload?.year as string) || null,
               tags: JSON.stringify(op.payload?.tags || []),
-              updatedAt: clientTs,
+              updatedAt: serverTs,
             },
           })
           results.push({ clientId: op.clientId, action: 'update', success: true })
@@ -328,8 +332,8 @@ router.post('/upload', async (req, res) => {
               rating: (op.payload?.rating as number) || 0,
               year: (op.payload?.year as string) || null,
               tags: JSON.stringify(op.payload?.tags || []),
-              createdAt: clientTs,
-              updatedAt: clientTs,
+              createdAt: serverTs,
+              updatedAt: serverTs,
             },
           })
           results.push({ clientId: op.clientId, action: 'create', success: true })

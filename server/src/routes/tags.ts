@@ -23,6 +23,20 @@ function safeParse(s: string | null | undefined): string[] {
   }
 }
 
+/**
+ * 标签匹配：安全版本
+ * ❌ 旧实现: tags: { contains: `"${from}"` }  ← JSON 字符串拼接注入
+ * ✅ 新实现: 加载后应用层 contains 检查 + 安全字符白名单
+ */
+function matchesTag(tagsString: string, tag: string): boolean {
+  // 1. 标签必须在白名单字符内（防止注入特殊字符）
+  if (!/^[\u4e00-\u9fa5a-zA-Z0-9_\-\s]{1,30}$/.test(tag)) {
+    return false
+  }
+  // 2. 应用层 contains 检查
+  return safeParse(tagsString).includes(tag)
+}
+
 // GET /tags — 标签云
 router.get('/', async (req, res) => {
   const uid = userId(req)
@@ -60,6 +74,9 @@ router.get('/suggest', async (req, res) => {
   const q = String(req.query.q || '').trim().toLowerCase()
   if (!q) return res.json({ items: [] })
 
+  // 限制 q 长度防滥用
+  if (q.length > 30) return res.status(400).json({ error: '查询过长' })
+
   const [memoirs, hobbies] = await Promise.all([
     prisma.memoir.findMany({ where: { userId: uid }, select: { tags: true } }),
     prisma.hobby.findMany({ where: { userId: uid }, select: { tags: true } }),
@@ -72,78 +89,129 @@ router.get('/suggest', async (req, res) => {
 })
 
 // PUT /tags/rename
+const validateTag = (val: string): boolean => {
+  // 允许：中文/英文/数字/_/-/空格，1-30 字符
+  // 禁止：JSON 特殊字符（"\\[]{}）、HTML、控制字符
+  if (typeof val !== 'string') return false
+  if (val.length === 0 || val.length > 30) return false
+  return /^[\u4e00-\u9fa5a-zA-Z0-9_\-\s]+$/.test(val)
+}
+
 const renameSchema = z.object({
-  from: z.string().min(1),
-  to: z.string().min(1),
+  from: z.string().refine(validateTag, '标签包含非法字符'),
+  to: z.string().refine(validateTag, '标签包含非法字符'),
 })
 
 router.put('/rename', async (req, res) => {
   const uid = userId(req)
   const parse = renameSchema.safeParse(req.body)
-  if (!parse.success) return res.status(400).json({ error: '参数错误' })
+  if (!parse.success) {
+    return res.status(400).json({
+      error: '参数错误',
+      details: parse.error.flatten().fieldErrors,
+    })
+  }
   const { from, to } = parse.data
 
+  // ✅ 修复 B1：先查询用户所有记录（不依赖用户输入的 contains）
+  //    然后应用层判断是否真的包含 from 标签
   const [memoirs, photos, hobbies] = await Promise.all([
-    prisma.memoir.findMany({ where: { userId: uid, tags: { contains: `"${from}"` } } }),
-    prisma.gallery.findMany({ where: { userId: uid, tags: { contains: `"${from}"` } } }),
-    prisma.hobby.findMany({ where: { userId: uid, tags: { contains: `"${from}"` } } }),
+    prisma.memoir.findMany({
+      where: { userId: uid, NOT: { tags: '[]' } },
+      select: { id: true, tags: true },
+    }),
+    prisma.gallery.findMany({
+      where: { userId: uid, NOT: { tags: '[]' } },
+      select: { id: true, tags: true },
+    }),
+    prisma.hobby.findMany({
+      where: { userId: uid, NOT: { tags: '[]' } },
+      select: { id: true, tags: true },
+    }),
   ])
 
-  const updateOne = async (tags: string) => {
-    const arr = safeParse(tags)
+  // 应用层过滤：真正包含 from 标签的记录
+  const memoirMatches = memoirs.filter((m) => matchesTag(m.tags, from))
+  const photoMatches = photos.filter((p) => matchesTag(p.tags, from))
+  const hobbyMatches = hobbies.filter((h) => matchesTag(h.tags, from))
+
+  const updateOne = (tagsString: string): string => {
+    const arr = safeParse(tagsString)
     const next = arr.map((t) => (t === from ? to : t))
-    // 去重
     return JSON.stringify([...new Set(next)])
   }
 
+  // ✅ 修复：使用事务保证原子性
   let updated = 0
-  for (const m of memoirs) {
-    await prisma.memoir.update({ where: { id: m.id }, data: { tags: await updateOne(m.tags) } })
-    updated++
-  }
-  for (const p of photos) {
-    await prisma.gallery.update({ where: { id: p.id }, data: { tags: await updateOne(p.tags) } })
-    updated++
-  }
-  for (const h of hobbies) {
-    await prisma.hobby.update({ where: { id: h.id }, data: { tags: await updateOne(h.tags) } })
-    updated++
-  }
+  await prisma.$transaction(async (tx) => {
+    for (const m of memoirMatches) {
+      await tx.memoir.update({ where: { id: m.id }, data: { tags: updateOne(m.tags) } })
+      updated++
+    }
+    for (const p of photoMatches) {
+      await tx.gallery.update({ where: { id: p.id }, data: { tags: updateOne(p.tags) } })
+      updated++
+    }
+    for (const h of hobbyMatches) {
+      await tx.hobby.update({ where: { id: h.id }, data: { tags: updateOne(h.tags) } })
+      updated++
+    }
+  })
 
-  res.json({ success: true, updated })
+  res.json({ success: true, updated, from, to })
 })
 
 // DELETE /tags/:name — 移除
 router.delete('/:name', async (req, res) => {
   const uid = userId(req)
-  const name = decodeURIComponent(req.params.name)
+  const name = decodeURIComponent(req.params.name || '')
 
-  const updateOne = (tags: string) => {
-    const arr = safeParse(tags).filter((t) => t !== name)
-    return JSON.stringify(arr)
+  // 1. 名称白名单校验
+  if (!/^[\u4e00-\u9fa5a-zA-Z0-9_\-\s]{1,30}$/.test(name)) {
+    return res.status(400).json({ error: '标签包含非法字符' })
   }
 
+  // ✅ 同样修复：先查全部，应用层过滤
   const [memoirs, photos, hobbies] = await Promise.all([
-    prisma.memoir.findMany({ where: { userId: uid, tags: { contains: `"${name}"` } } }),
-    prisma.gallery.findMany({ where: { userId: uid, tags: { contains: `"${name}"` } } }),
-    prisma.hobby.findMany({ where: { userId: uid, tags: { contains: `"${name}"` } } }),
+    prisma.memoir.findMany({
+      where: { userId: uid, NOT: { tags: '[]' } },
+      select: { id: true, tags: true },
+    }),
+    prisma.gallery.findMany({
+      where: { userId: uid, NOT: { tags: '[]' } },
+      select: { id: true, tags: true },
+    }),
+    prisma.hobby.findMany({
+      where: { userId: uid, NOT: { tags: '[]' } },
+      select: { id: true, tags: true },
+    }),
   ])
 
-  let updated = 0
-  for (const m of memoirs) {
-    await prisma.memoir.update({ where: { id: m.id }, data: { tags: updateOne(m.tags) } })
-    updated++
-  }
-  for (const p of photos) {
-    await prisma.gallery.update({ where: { id: p.id }, data: { tags: updateOne(p.tags) } })
-    updated++
-  }
-  for (const h of hobbies) {
-    await prisma.hobby.update({ where: { id: h.id }, data: { tags: updateOne(h.tags) } })
-    updated++
+  const memoirMatches = memoirs.filter((m) => matchesTag(m.tags, name))
+  const photoMatches = photos.filter((p) => matchesTag(p.tags, name))
+  const hobbyMatches = hobbies.filter((h) => matchesTag(h.tags, name))
+
+  const updateOne = (tagsString: string): string => {
+    return JSON.stringify(safeParse(tagsString).filter((t) => t !== name))
   }
 
-  res.json({ success: true, updated })
+  let updated = 0
+  await prisma.$transaction(async (tx) => {
+    for (const m of memoirMatches) {
+      await tx.memoir.update({ where: { id: m.id }, data: { tags: updateOne(m.tags) } })
+      updated++
+    }
+    for (const p of photoMatches) {
+      await tx.gallery.update({ where: { id: p.id }, data: { tags: updateOne(p.tags) } })
+      updated++
+    }
+    for (const h of hobbyMatches) {
+      await tx.hobby.update({ where: { id: h.id }, data: { tags: updateOne(h.tags) } })
+      updated++
+    }
+  })
+
+  res.json({ success: true, updated, name })
 })
 
 export default router

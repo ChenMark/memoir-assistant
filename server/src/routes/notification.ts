@@ -10,9 +10,19 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { authMiddleware, userId } from '../middleware/auth.js'
+import rateLimit from 'express-rate-limit'
 
 const router = Router()
 router.use(authMiddleware)
+
+// ✅ S2 修复：批量操作加速率限制
+const bulkLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 10,
+  message: { error: '操作过于频繁，请稍后再试' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
 
 const listQuerySchema = z.object({
   unread: z.enum(['true', 'false']).optional(),
@@ -68,7 +78,7 @@ router.post('/:id/read', async (req, res) => {
 })
 
 // POST /notifications/read-all
-router.post('/read-all', async (req, res) => {
+router.post('/read-all', bulkLimiter, async (req, res) => {
   const uid = userId(req)
   const result = await prisma.notification.updateMany({
     where: { userId: uid, read: false },
@@ -90,7 +100,7 @@ router.delete('/:id', async (req, res) => {
 })
 
 // DELETE /notifications
-router.delete('/', async (req, res) => {
+router.delete('/', bulkLimiter, async (req, res) => {
   const uid = userId(req)
   const result = await prisma.notification.deleteMany({ where: { userId: uid } })
   res.json({ success: true, deleted: result.count })
