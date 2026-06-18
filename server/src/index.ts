@@ -40,6 +40,22 @@ import hobbyRoutes from './routes/hobby.js'
 import versionRoutes from './routes/version.js'
 import captureRoutes from './routes/capture.js'
 import agentRoutes from './routes/agent.js'
+import notificationRoutes from './routes/notification.js'
+import searchRoutes from './routes/search.js'
+import asrRoutes from './routes/asr.js'
+import exportRoutes from './routes/export.js'
+import devicesRoutes from './routes/devices.js'
+import memoirInteract, { commentRouter, shareRouter, publicRouter as memoirPublicRouter } from './routes/memoir-interact.js'
+import syncRoutes from './routes/sync.js'
+import tagsRoutes from './routes/tags.js'
+import dashboardRoutes from './routes/dashboard.js'
+import bookmarkRoutes from './routes/bookmark.js'
+import interviewRoutes from './routes/interview.js'
+import reminderRoutes from './routes/reminder.js'
+import familyRoutes from './routes/family.js'
+import memoirAiRoutes from './routes/memoir-ai.js'
+import emergencyRoutes from './routes/emergency.js'
+import publicRoutes from './routes/public.js'
 import { requestLogger } from './middleware/requestLogger.js'
 import { sanitizeInput } from './middleware/sanitize.js'
 import { errorHandler } from './middleware/errorHandler.js'
@@ -149,6 +165,8 @@ app.get(`${API_PREFIX}/health`, (_req, res) => {
 app.use(`${API_PREFIX}/auth`, bodySizeLimit(10 * 1024), authRoutes)
 // OSS 路由：限制 10KB
 app.use(`${API_PREFIX}/oss`, authMiddleware, bodySizeLimit(10 * 1024), ossRoutes)
+// Memoir AI 路由（必须先挂载以拦截 /templates 等静态路径）
+app.use(`${API_PREFIX}/memoir`, authMiddleware, bodySizeLimit(200 * 1024), memoirAiRoutes)
 // Memoir 路由：限制 200KB (回忆录可能较长)
 app.use(`${API_PREFIX}/memoir`, authMiddleware, bodySizeLimit(200 * 1024), memoirRoutes)
 // AI 路由：限制 1MB (聊天消息数组)
@@ -171,6 +189,28 @@ app.get(`${API_PREFIX}/shared/photo/:token`, sharedPhotoHandler)
 
 // 版本信息（无需认证，供 OTA 检查）
 app.use('/api', versionRoutes)
+
+// ============ P0: 通知 / 搜索 / ASR / 导出 / 多设备 / 评论 / 同步 ============
+app.use(`${API_PREFIX}/notifications`, authMiddleware, bodySizeLimit(10 * 1024), notificationRoutes)
+app.use(`${API_PREFIX}/search`, authMiddleware, bodySizeLimit(10 * 1024), searchRoutes)
+app.use(`${API_PREFIX}/capture/asr`, authMiddleware, bodySizeLimit(30 * 1024 * 1024), asrRoutes)
+app.use(`${API_PREFIX}/export`, authMiddleware, bodySizeLimit(10 * 1024), exportRoutes)
+app.use(`${API_PREFIX}/me/devices`, authMiddleware, bodySizeLimit(10 * 1024), devicesRoutes)
+app.use(`${API_PREFIX}/memoir/:id/comments`, authMiddleware, bodySizeLimit(10 * 1024), commentRouter)
+app.use(`${API_PREFIX}/memoir/:id/share`, authMiddleware, bodySizeLimit(10 * 1024), shareRouter)
+app.use(`${API_PREFIX}/shared`, bodySizeLimit(10 * 1024), memoirPublicRouter)
+app.use(`${API_PREFIX}/sync`, authMiddleware, bodySizeLimit(200 * 1024), syncRoutes)
+
+// ============ P1: 体验优化批次 ============
+app.use(`${API_PREFIX}/tags`, authMiddleware, bodySizeLimit(10 * 1024), tagsRoutes)
+app.use(`${API_PREFIX}/dashboard`, authMiddleware, bodySizeLimit(10 * 1024), dashboardRoutes)
+app.use(`${API_PREFIX}/bookmarks`, authMiddleware, bodySizeLimit(10 * 1024), bookmarkRoutes)
+app.use(`${API_PREFIX}/interview`, authMiddleware, bodySizeLimit(100 * 1024), interviewRoutes)
+app.use(`${API_PREFIX}/reminders`, authMiddleware, bodySizeLimit(10 * 1024), reminderRoutes)
+// ============ P2: 高阶功能批次 ============
+app.use(`${API_PREFIX}/family`, authMiddleware, bodySizeLimit(10 * 1024), familyRoutes)
+app.use(`${API_PREFIX}/emergency`, authMiddleware, bodySizeLimit(10 * 1024), emergencyRoutes)
+app.use(`${API_PREFIX}/public`, bodySizeLimit(10 * 1024), publicRoutes)
 
 // ============ 电信能力平台 Token 交换 ============
 app.post(`${API_PREFIX}/telecom/token`, async (req, res) => {

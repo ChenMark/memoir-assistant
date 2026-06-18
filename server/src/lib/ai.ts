@@ -558,3 +558,34 @@ export async function generateStory(messages: ChatMessage[]): Promise<string> {
 export function getDimensions(): InterviewDimension[] {
   return INTERVIEW_DIMENSIONS
 }
+
+/**
+ * 简单文本生成（不依赖 Agent 流式）
+ * 用于批量任务（生成大纲、润色等）
+ */
+export async function generateText(prompt: string, model?: string): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    // 降级：返回原始 prompt
+    return prompt
+  }
+  const r = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: model || process.env.AI_MODEL || 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 1500,
+      temperature: 0.7,
+    }),
+  })
+  if (!r.ok) {
+    const t = await r.text()
+    throw new Error(`AI API error ${r.status}: ${t}`)
+  }
+  const data: any = await r.json()
+  return data.choices?.[0]?.message?.content || ''
+}

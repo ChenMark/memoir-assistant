@@ -12,3 +12,4 @@ server/prisma/dev.db
 .DS_Store
 .vercel
 .workbuddy/
+exports/

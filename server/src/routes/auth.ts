@@ -36,8 +36,9 @@ export function authMiddleware(req: Request, res: Response, next: Function) {
   if (!payload) {
     return res.status(401).json({ error: '登录已过期，请重新登录' })
   }
-  (req as any).userId = payload.sub
+  ;(req as any).userId = payload.sub
   ;(req as any).userEmail = payload.email
+  ;(req as any).token = token
   next()
 }
 

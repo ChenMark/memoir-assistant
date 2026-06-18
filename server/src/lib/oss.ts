@@ -133,6 +133,13 @@ export async function deleteObject(key: string): Promise<void> {
   await client.delete(key)
 }
 
+/** 读取 OSS 对象为 Buffer */
+export async function getObjectBuffer(key: string): Promise<Buffer> {
+  const client = getOSSClient()
+  const result = await client.get(key)
+  return result.content as Buffer
+}
+
 /** 列出 OSS 对象 */
 export async function listObjects(prefix: string, maxKeys = 1000): Promise<string[]> {
   const client = getOSSClient()
