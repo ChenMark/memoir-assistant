@@ -13,3 +13,6 @@ server/prisma/dev.db
 .vercel
 .workbuddy/
 exports/
+gradle-download.zip
+*.apk
+*.apk.idsig

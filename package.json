@@ -25,7 +25,12 @@
     "check": "npm run lint && npm run format:check"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
+    "adm-zip": "^0.5.17",
     "ali-oss": "^6.21.0",
+    "core-js": "^3.49.0",
     "crypto-js": "^4.2.0",
     "dotenv": "^17.4.2",
     "jspdf": "^4.2.1",
@@ -51,13 +56,13 @@
     "@types/ua-parser-js": "^0.7.39",
     "@typescript-eslint/eslint-plugin": "^8.61.0",
     "@typescript-eslint/parser": "^8.61.0",
-    "@vitejs/plugin-react": "^4.2.1",
+    "@vitejs/plugin-react": "^4.7.0",
     "eslint": "^10.5.0",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
     "prettier": "^3.8.4",
     "ts-jest": "^29.4.11",
-    "typescript": "^5.3.3",
+    "typescript": "^5.9.3",
     "vite": "^5.0.12"
   }
 }

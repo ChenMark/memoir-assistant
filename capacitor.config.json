@@ -1,0 +1,8 @@
+{
+  "appId": "com.memoir.assistant",
+  "appName": "忆往昔",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
